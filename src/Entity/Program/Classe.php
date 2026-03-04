@@ -55,7 +55,7 @@ class Classe
 
     #[ORM\Column(length: 255, nullable: true)]
     #[Assert\Length(max: 255)]
-    private ?string $imageUrl = null;
+    private ?string $imageUrl = 'https://images.unsplash.com/photo-1503676260728-1c00da094a0b?w=400';
 
     #[ORM\Column(type: 'string', length: 20, enumType: ClasseStatus::class, options: ['default' => 'inactive'])]
     private ClasseStatus $status = ClasseStatus::INACTIVE;
