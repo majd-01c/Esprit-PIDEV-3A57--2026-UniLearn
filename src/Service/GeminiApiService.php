@@ -76,8 +76,9 @@ A student is asking: "$question"
 Here are recent discussions from our forum:
 $topicsContext
 
-Task: Analyze the question and suggest the TOP 3 most relevant existing discussions that might help answer this question. 
-For each suggestion, explain briefly (1 sentence) why it's relevant.
+Task:
+1. Suggest the TOP 3 most relevant existing discussions that might help answer this question. For each, explain briefly why it's relevant.
+2. Provide a direct, helpful answer to the student's question (2-3 paragraphs, educational and encouraging). Use simple language. Do NOT use markdown.
 
 Respond in JSON format:
 {
@@ -86,7 +87,8 @@ Respond in JSON format:
     ...
   ],
   "needsNewTopic": true/false,
-  "advice": "brief advice for the student"
+  "advice": "brief advice for the student",
+  "directAnswer": "Your full helpful answer to the student's question here."
 }
 PROMPT;
 

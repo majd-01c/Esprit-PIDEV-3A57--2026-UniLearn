@@ -211,6 +211,7 @@ class ForumController extends AbstractController
                 'success' => true,
                 'topics' => $topics,
                 'advice' => $result['aiAdvice'],
+                'directAnswer' => $result['directAnswer'] ?? null,
                 'fromCache' => $result['fromCache']
             ]);
 
