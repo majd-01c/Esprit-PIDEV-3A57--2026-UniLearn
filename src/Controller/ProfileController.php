@@ -55,7 +55,7 @@ class ProfileController extends AbstractController
                 $this->entityManager->flush();
 
                 $this->addFlash('success', 'Profile updated successfully.');
-                return $this->redirectToRoute('profile_edit');
+                return $this->redirectToRoute('home');
             } catch (\Exception $e) {
                 $this->addFlash('error', 'Error updating profile: ' . $e->getMessage());
             }

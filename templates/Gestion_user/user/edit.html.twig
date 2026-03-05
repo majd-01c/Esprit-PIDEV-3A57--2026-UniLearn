@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Edit User - {{ user.profile ? user.profile.fullName : user.email }}{% endblock %}
+{% block title %}{{ 'user.edit_user'|trans }} - {{ user.profile ? user.profile.fullName : user.email }}{% endblock %}
 
 {% block body %}
 <div class="container mt-4">
@@ -9,16 +9,16 @@
             {# Breadcrumb #}
             <nav aria-label="breadcrumb" class="mb-3">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ path('app_home') }}" class="text-decoration-none">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ path('app_user_index') }}" class="text-decoration-none">Users</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Edit User</li>
+                    <li class="breadcrumb-item"><a href="{{ path('app_home') }}" class="text-decoration-none">{{ 'nav.home'|trans }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ path('app_user_index') }}" class="text-decoration-none">{{ 'user.user_management'|trans }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ 'user.edit_user'|trans }}</li>
                 </ol>
             </nav>
             
             <div class="card">
                 <div class="card-header bg-primary">
                     <h4 class="mb-0 d-flex align-items-center gap-2">
-                        <i class="bi bi-pencil-fill"></i> Edit User
+                        <i class="bi bi-pencil-fill"></i> {{ 'user.edit_user'|trans }}
                     </h4>
                 </div>
                 <div class="card-body">
