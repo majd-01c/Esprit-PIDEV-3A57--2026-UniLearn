@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Verify Your Email - UniLearn{% endblock %}
+{% block title %}{{ 'auth.verify_email_title'|trans }} - UniLearn{% endblock %}
 
 {% block body %}
 <div class="container mt-5">
@@ -9,7 +9,7 @@
             <div class="card shadow-lg">
                 <div class="card-header bg-primary text-white text-center py-4">
                     <h3 class="mb-0">
-                        <i class="bi bi-envelope-check-fill"></i> Email Verification
+                        <i class="bi bi-envelope-check-fill"></i> {{ 'auth.verify_email_title'|trans }}
                     </h3>
                 </div>
                 <div class="card-body p-4">
@@ -23,20 +23,29 @@
                     {% endfor %}
 
                     <div class="alert alert-info mb-4">
-                        <i class="bi bi-info-circle-fill"></i> <strong>Email Verification Required!</strong>
-                        <p class="mb-0 mt-2">We've sent a 6-digit verification code to <strong>{{ user.email }}</strong>. Please check your email and enter the code below. The code is valid for <strong>1 minute</strong>.</p>
+                        <i class="bi bi-info-circle-fill"></i> <strong>{{ 'auth.verify_email_title'|trans }}</strong>
+                        <p class="mb-0 mt-2">{{ 'auth.verify_email_desc'|trans }}</p>
+                        {% if codeExpiryDate is defined and codeExpiryDate %}
+                        <p class="mb-0 mt-2">
+                            {{ 'auth.code_expires_in'|trans }}: <strong id="countdown-timer">--:--</strong>
+                        </p>
+                        {% endif %}
                     </div>
 
                     {% if expired is defined and expired %}
                         <div class="alert alert-warning">
-                            <i class="bi bi-hourglass-split"></i> Your verification code has expired. Click the "Resend Code" button below to get a new one.
+                            <i class="bi bi-hourglass-split"></i> {{ 'auth.code_expired'|trans }}
                         </div>
                     {% endif %}
+
+                    <div class="alert alert-danger d-none" id="expiry-alert">
+                        <i class="bi bi-hourglass-bottom"></i> <strong>{{ 'auth.code_expired'|trans }}</strong>
+                    </div>
 
                     <form method="post" id="verificationForm">
                         <div class="mb-4">
                             <label for="verification_code" class="form-label fw-bold">
-                                <i class="bi bi-shield-lock-fill"></i> Enter Verification Code
+                                <i class="bi bi-shield-lock-fill"></i> {{ 'auth.verification_code'|trans }}
                             </label>
                             <input 
                                 type="text" 
@@ -55,7 +64,7 @@
 
                         <div class="d-grid gap-2">
                             <button type="submit" class="btn btn-primary btn-lg">
-                                <i class="bi bi-check2-circle"></i> Verify Email
+                                <i class="bi bi-check2-circle"></i> {{ 'auth.verify'|trans }}
                             </button>
                         </div>
                     </form>
@@ -63,10 +72,10 @@
                     <hr class="my-4">
 
                     <div class="text-center">
-                        <p class="text-muted mb-2">Didn't receive the code?</p>
+                        <p class="text-muted mb-2">{{ 'auth.resend_code'|trans }}</p>
                         <form method="post" action="{{ path('app_verify_resend') }}" class="d-inline">
                             <button type="submit" class="btn btn-outline-secondary">
-                                <i class="bi bi-send-fill"></i> Resend Code
+                                <i class="bi bi-send-fill"></i> {{ 'auth.resend_code'|trans }}
                             </button>
                         </form>
                     </div>
@@ -94,12 +103,34 @@
         this.value = this.value.replace(/[^0-9]/g, '');
     });
 
-    // Auto-submit when 6 digits are entered
-    document.getElementById('verification_code').addEventListener('input', function(e) {
-        if (this.value.length === 6) {
-            // Optional: auto-submit form
-            // document.getElementById('verificationForm').submit();
+    {% if codeExpiryDate is defined and codeExpiryDate and not (expired is defined and expired) %}
+    (function () {
+        var expiryTime = {{ codeExpiryDate|date('U') * 1000 }};
+        var timerEl = document.getElementById('countdown-timer');
+        var expiryAlert = document.getElementById('expiry-alert');
+        var submitBtn = document.querySelector('#verificationForm button[type="submit"]');
+        var codeInput = document.getElementById('verification_code');
+
+        function updateCountdown() {
+            var remaining = Math.max(0, Math.floor((expiryTime - Date.now()) / 1000));
+            var mins = Math.floor(remaining / 60);
+            var secs = remaining % 60;
+            if (timerEl) {
+                timerEl.textContent = mins + ':' + (secs < 10 ? '0' : '') + secs;
+                timerEl.style.color = remaining <= 15 ? '#dc3545' : '';
+            }
+            if (remaining === 0) {
+                clearInterval(interval);
+                if (expiryAlert) expiryAlert.classList.remove('d-none');
+                if (submitBtn) submitBtn.disabled = true;
+                if (codeInput) codeInput.disabled = true;
+                if (timerEl) timerEl.textContent = '0:00';
+            }
         }
-    });
+
+        updateCountdown();
+        var interval = setInterval(updateCountdown, 1000);
+    })();
+    {% endif %}
 </script>
 {% endblock %}

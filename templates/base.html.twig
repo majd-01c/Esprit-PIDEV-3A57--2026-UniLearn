@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="{{ app.request.locale }}" dir="{{ app.request.locale == 'ar' ? 'rtl' : 'ltr' }}">
     <head>
         <meta charset="UTF-8">
         <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -39,6 +39,9 @@
             });
         </script>
         {% block stylesheets %}{% endblock %}
+        {% if app.request.locale == 'ar' %}
+        <link rel="stylesheet" href="{{ asset('css/rtl.css') }}">
+        {% endif %}
         {% block javascripts %}
             {% block importmap %}{{ importmap('app') }}{% endblock %}
         {% endblock %}
@@ -57,104 +60,101 @@
                     <i class="bi bi-gear-wide-connected"></i>
                     <span class="brand-text">UniLearn</span>
                 </a>
-                <span class="admin-badge"><i class="bi bi-shield-lock-fill me-1"></i>Admin Panel</span>
+                <span class="admin-badge"><i class="bi bi-shield-lock-fill me-1"></i>{{ 'nav.admin_panel'|trans }}</span>
             </div>
             <div class="sidebar-menu">
-                <span class="sidebar-section-label">Overview</span>
+                <span class="sidebar-section-label">{{ 'nav.overview'|trans }}</span>
                 <a class="sidebar-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}" href="{{ path('app_home') }}">
-                    <i class="bi bi-grid-1x2-fill"></i><span>Dashboard</span>
+                    <i class="bi bi-grid-1x2-fill"></i><span>{{ 'nav.dashboard'|trans }}</span>
                 </a>
-                <span class="sidebar-section-label">User Management</span>
-                <a class="sidebar-link {% if app.request.attributes.get('_route') == 'app_user_index' %}active{% endif %}" href="{{ path('app_user_index') }}">
-                    <i class="bi bi-people-fill"></i><span>All Users</span>
+                <span class="sidebar-section-label">{{ 'nav.user_management'|trans }}</span>
+                <a class="sidebar-link {% if app.request.attributes.get('_route') starts with 'app_user' %}active{% endif %}" href="{{ path('app_user_index') }}">
+                    <i class="bi bi-people-fill"></i><span>{{ 'nav.manage_users'|trans }}</span>
                 </a>
-                <a class="sidebar-link {% if app.request.attributes.get('_route') == 'app_user_new' %}active{% endif %}" href="{{ path('app_user_new') }}">
-                    <i class="bi bi-person-plus-fill"></i><span>Add User</span>
-                </a>
-                <span class="sidebar-section-label">Student Services</span>
+                <span class="sidebar-section-label">{{ 'nav.student_services'|trans }}</span>
                 <a class="sidebar-link {% if 'admin_reclamation' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_reclamations') }}">
-                    <i class="bi bi-exclamation-triangle-fill"></i><span>Complaints</span>
+                    <i class="bi bi-exclamation-triangle-fill"></i><span>{{ 'nav.reclamations'|trans }}</span>
                 </a>
                 <a class="sidebar-link {% if 'admin_document' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_document_requests') }}">
-                    <i class="bi bi-file-earmark-text-fill"></i><span>Document Requests</span>
+                    <i class="bi bi-file-earmark-text-fill"></i><span>{{ 'nav.document_requests'|trans }}</span>
                 </a>
                 <a class="sidebar-link {% if 'admin_schedule' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_schedules') }}">
-                    <i class="bi bi-calendar-week-fill"></i><span>Schedules</span>
+                    <i class="bi bi-calendar-week-fill"></i><span>{{ 'nav.schedules'|trans }}</span>
                 </a>
-                <span class="sidebar-section-label">Academics</span>
-                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme_programs') }}">
-                    <i class="bi bi-journal-bookmark-fill"></i><span>Programs</span>
+                <span class="sidebar-section-label">{{ 'nav.academics'|trans }}</span>
+                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme') }}">
+                    <i class="bi bi-journal-bookmark-fill"></i><span>{{ 'nav.programs'|trans }}</span>
                 </a>
                 <a class="sidebar-link {% if 'classe' in app.request.attributes.get('_route') and 'teacher' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_classe') }}">
-                    <i class="bi bi-door-open-fill"></i><span>Classes</span>
+                    <i class="bi bi-door-open-fill"></i><span>{{ 'nav.classes'|trans }}</span>
                 </a>
-                <span class="sidebar-section-label">Platform</span>
+                <span class="sidebar-section-label">{{ 'nav.platform'|trans }}</span>
                 <a class="sidebar-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_event') }}">
-                    <i class="bi bi-calendar-event-fill"></i><span>Events</span>
+                    <i class="bi bi-calendar-event-fill"></i><span>{{ 'nav.events'|trans }}</span>
                 </a>
                 <a class="sidebar-link {% if 'job' in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_job_offer_index') }}">
-                    <i class="bi bi-briefcase-fill"></i><span>Job Offers</span>
+                    <i class="bi bi-briefcase-fill"></i><span>{{ 'nav.job_offers'|trans }}</span>
                 </a>
                 
                 {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_ADMIN') and not is_granted('ROLE_TEACHER') and not is_granted('ROLE_TRAINER') and not is_granted('ROLE_BUSINESS_PARTNER') %}
                 <div class="sidebar-dropdown">
                     <a class="sidebar-link {% if 'job' in app.request.attributes.get('_route') and 'partner' not in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}" href="#studentJobSubmenu" data-bs-toggle="collapse">
                         <i class="bi bi-briefcase-fill"></i>
-                        <span>Job Offers</span>
+                        <span>{{ 'nav.job_offers'|trans }}</span>
                         <i class="bi bi-chevron-down ms-auto"></i>
                     </a>
                     <div class="collapse sidebar-submenu" id="studentJobSubmenu">
                         <a class="sidebar-sublink" href="{{ path('app_job_offer_index') }}">
-                            <i class="bi bi-search"></i> Browse Jobs
+                            <i class="bi bi-search"></i> {{ 'nav.browse_jobs'|trans }}
                         </a>
                         <a class="sidebar-sublink" href="{{ path('app_student_job_applications') }}">
-                            <i class="bi bi-file-text"></i> My Applications
+                            <i class="bi bi-file-text"></i> {{ 'nav.my_applications'|trans }}
                         </a>
                     </div>
                 </div>
                 {% endif %}
                 
                 <a class="sidebar-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_forum') }}">
-                    <i class="bi bi-chat-dots-fill"></i><span>Community</span>
+                    <i class="bi bi-chat-dots-fill"></i><span>{{ 'nav.community'|trans }}</span>
                 </a>
 
                 <a class="sidebar-link {% if 'meeting' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_meeting_index') }}">
                     <i class="bi bi-camera-video-fill"></i>
-                    <span>Video Meeting</span>
+                    <span>{{ 'nav.video_meeting'|trans }}</span>
                 </a>
 
                 {% if is_granted('ROLE_BUSINESS_PARTNER') and not is_granted('ROLE_ADMIN') %}
                 <div class="sidebar-dropdown">
                     <a class="sidebar-link {% if 'partner_job' in app.request.attributes.get('_route') %}active{% endif %}" href="#partnerJobSubmenu" data-bs-toggle="collapse">
                         <i class="bi bi-briefcase-fill"></i>
-                        <span>Job Offer</span>
+                        <span>{{ 'nav.job_offers'|trans }}</span>
                         <i class="bi bi-chevron-down ms-auto"></i>
                     </a>
                     <div class="collapse sidebar-submenu" id="partnerJobSubmenu">
                         <a class="sidebar-sublink" href="{{ path('app_partner_job_offer_index') }}">
-                            <i class="bi bi-list-ul"></i> My Offers
+                            <i class="bi bi-list-ul"></i> {{ 'nav.my_offers'|trans }}
                         </a>
                         <a class="sidebar-sublink" href="{{ path('app_partner_job_offer_new') }}">
-                            <i class="bi bi-plus-circle"></i> Create Job Offer
+                            <i class="bi bi-plus-circle"></i> {{ 'nav.create_job_offer'|trans }}
                         </a>
                     </div>
                 </div>
                 {% endif %}
 
                 {% if is_granted('ROLE_ADMIN') %}
-                <span class="sidebar-section-label">Moderation</span>
+                <span class="sidebar-section-label">{{ 'nav.moderation'|trans }}</span>
                 <a class="sidebar-link {% if 'admin_job' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('admin_job_offer_list') }}">
-                    <i class="bi bi-shield-fill-check"></i><span>Moderate Jobs</span>
+                    <i class="bi bi-shield-fill-check"></i><span>{{ 'nav.moderate_jobs'|trans }}</span>
                     {% if pendingJobOffersCount > 0 %}
                     <span class="badge bg-warning text-dark ms-2">{{ pendingJobOffersCount }}</span>
                     {% endif %}
                 </a>
-                <span class="sidebar-section-label">Account</span>
+                <span class="sidebar-section-label">{{ 'nav.account'|trans }}</span>
                 <a class="sidebar-link {% if app.request.attributes.get('_route') == 'profile_edit' %}active{% endif %}" href="{{ path('profile_edit') }}">
-                    <i class="bi bi-person-gear"></i><span>Profile Settings</span>
+                    <i class="bi bi-person-gear"></i><span>{{ 'nav.profile_settings'|trans }}</span>
                 </a>
                 <a class="sidebar-link {% if app.request.attributes.get('_route') == 'profile_change_password' %}active{% endif %}" href="{{ path('profile_change_password') }}">
-                    <i class="bi bi-key-fill"></i><span>Change Password</span>
+                    <i class="bi bi-key-fill"></i><span>{{ 'nav.change_password'|trans }}</span>
                 </a>
                 {% endif %}
             </div>
@@ -164,11 +164,22 @@
             <button class="sidebar-toggle" id="sidebarToggle"><i class="bi bi-list"></i></button>
             <a href="{{ path('app_home') }}" class="topbar-title text-decoration-none">
                 <i class="bi bi-gear-wide-connected text-primary"></i> UniLearn
-                <span class="topbar-admin-tag"><i class="bi bi-shield-lock-fill me-1"></i>Admin</span>
+                <span class="topbar-admin-tag"><i class="bi bi-shield-lock-fill me-1"></i>{{ 'nav.admin_panel'|trans }}</span>
             </a>
             <button class="theme-toggle ms-auto" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
                 <i class="bi bi-sun-fill"></i><i class="bi bi-moon-stars-fill"></i>
             </button>
+            <div class="dropdown ms-2">
+                <button class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center gap-1 locale-switcher-btn" type="button" data-bs-toggle="dropdown" aria-label="{{ 'common.language'|trans }}">
+                    <i class="bi bi-translate"></i>
+                    <span class="d-none d-md-inline">{{ app.request.locale|upper }}</span>
+                </button>
+                <ul class="dropdown-menu dropdown-menu-end shadow locale-dropdown">
+                    <li><a class="dropdown-item {% if app.request.locale == 'en' %}active{% endif %}" href="{{ path('app_switch_locale', {locale: 'en'}) }}">🇬🇧 {{ 'common.english'|trans }}</a></li>
+                    <li><a class="dropdown-item {% if app.request.locale == 'fr' %}active{% endif %}" href="{{ path('app_switch_locale', {locale: 'fr'}) }}">🇫🇷 {{ 'common.french'|trans }}</a></li>
+                    <li><a class="dropdown-item {% if app.request.locale == 'ar' %}active{% endif %}" href="{{ path('app_switch_locale', {locale: 'ar'}) }}">🇸🇦 {{ 'common.arabic'|trans }}</a></li>
+                </ul>
+            </div>
             <div class="topbar-user">
                 <div class="dropdown">
                     <button class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
@@ -187,9 +198,9 @@
                         </div>
                     </button>
                     <ul class="dropdown-menu dropdown-menu-end shadow">
-                        <li><a class="dropdown-item" href="{{ path('profile_edit') }}"><i class="bi bi-person-gear me-2"></i>Profile Settings</a></li>
+                        <li><a class="dropdown-item" href="{{ path('profile_edit') }}"><i class="bi bi-person-gear me-2"></i>{{ 'nav.profile_settings'|trans }}</a></li>
                         <li><hr class="dropdown-divider"></li>
-                        <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}"><i class="bi bi-box-arrow-right me-2"></i>Logout</a></li>
+                        <li><a class="dropdown-item text-danger" href="{{ path('app_logout') }}"><i class="bi bi-box-arrow-right me-2"></i>{{ 'nav.logout'|trans }}</a></li>
                     </ul>
                 </div>
             </div>
@@ -212,36 +223,35 @@
                 </a>
 
                 <div class="fo-navbar-links" id="foNavLinks">
-                    <a href="{{ path('app_home') }}" class="fo-nav-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}">Home</a>
-                    <a href="{{ path('app_event') }}" class="fo-nav-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}">Events</a>
-                    <a href="{{ path('app_job_offer_index') }}" class="fo-nav-link {% if 'job' in app.request.attributes.get('_route') and 'partner' not in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}">Jobs</a>
-                    <a href="{{ path('app_forum') }}" class="fo-nav-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}">Forum</a>
+                    <a href="{{ path('app_home') }}" class="fo-nav-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}">{{ 'nav.home'|trans }}</a>
+                    <a href="{{ path('app_event') }}" class="fo-nav-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.events'|trans }}</a>
+                    <a href="{{ path('app_job_offer_index') }}" class="fo-nav-link {% if 'job' in app.request.attributes.get('_route') and 'partner' not in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.jobs'|trans }}</a>
+                    <a href="{{ path('app_forum') }}" class="fo-nav-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.forum'|trans }}</a>
 
                     {% if is_granted('ROLE_STUDENT') %}
                     <div class="fo-nav-dropdown-wrap">
                         <button class="fo-nav-link fo-has-dropdown {% if 'espace_etudiant' in app.request.attributes.get('_route') or 'student_learning' in app.request.attributes.get('_route') %}active{% endif %}">
-                            My Space <i class="bi bi-chevron-down fo-caret"></i>
+                            {{ 'nav.my_space'|trans }} <i class="bi bi-chevron-down fo-caret"></i>
                         </button>
                         <div class="fo-dropdown-menu">
-                            <a href="{{ path('app_espace_etudiant_dashboard') }}" class="fo-dropdown-item"><i class="bi bi-speedometer2"></i> Tableau de Bord</a>
-                            <a href="{{ path('app_student_learning_index') }}" class="fo-dropdown-item"><i class="bi bi-play-circle"></i> My Learning</a>
-                            <a href="{{ path('app_espace_etudiant_grades') }}" class="fo-dropdown-item"><i class="bi bi-graph-up"></i> Mes Notes</a>
-                            <a href="{{ path('app_espace_etudiant_reclamations') }}" class="fo-dropdown-item"><i class="bi bi-exclamation-circle"></i> Réclamations</a>
-                            <a href="{{ path('app_espace_etudiant_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-text"></i> Documents</a>
+                            <a href="{{ path('app_espace_etudiant_dashboard') }}" class="fo-dropdown-item"><i class="bi bi-speedometer2"></i> {{ 'nav.tableau_de_bord'|trans }}</a>
+                            <a href="{{ path('app_student_learning_index') }}" class="fo-dropdown-item"><i class="bi bi-play-circle"></i> {{ 'nav.my_learning'|trans }}</a>
+                            <a href="{{ path('app_espace_etudiant_grades') }}" class="fo-dropdown-item"><i class="bi bi-graph-up"></i> {{ 'nav.mes_notes'|trans }}</a>
+                            <a href="{{ path('app_espace_etudiant_reclamations') }}" class="fo-dropdown-item"><i class="bi bi-exclamation-circle"></i> {{ 'nav.reclamations'|trans }}</a>
+                            <a href="{{ path('app_espace_etudiant_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-text"></i> {{ 'nav.documents'|trans }}</a>
                         </div>
                     </div>
                     {% endif %}
 
                     {% if is_granted('ROLE_TEACHER') %}
                     <div class="fo-nav-dropdown-wrap">
-                        <button class="fo-nav-link fo-has-dropdown {% if 'teacher_classe' in app.request.attributes.get('_route') or 'teacher_grade' in app.request.attributes.get('_route') or 'teacher_document' in app.request.attributes.get('_route') or 'teacher_schedule' in app.request.attributes.get('_route') %}active{% endif %}">
-                            Teaching <i class="bi bi-chevron-down fo-caret"></i>
+                        <button class="fo-nav-link fo-has-dropdown {% if 'teacher_classe' in app.request.attributes.get('_route') or 'teacher_grade' in app.request.attributes.get('_route') or 'teacher_document' in app.request.attributes.get('_route') %}active{% endif %}">
+                            {{ 'nav.teaching'|trans }} <i class="bi bi-chevron-down fo-caret"></i>
                         </button>
                         <div class="fo-dropdown-menu">
-                            <a href="{{ path('app_teacher_my_classes') }}" class="fo-dropdown-item"><i class="bi bi-door-open"></i> My Classes</a>
-                            <a href="{{ path('app_teacher_schedule') }}" class="fo-dropdown-item"><i class="bi bi-calendar-week"></i> My Schedule</a>
-                            <a href="{{ path('app_teacher_grades') }}" class="fo-dropdown-item"><i class="bi bi-journal-check"></i> Grades &amp; Assessments</a>
-                            <a href="{{ path('app_teacher_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-arrow-up"></i> Documents</a>
+                            <a href="{{ path('app_teacher_my_classes') }}" class="fo-dropdown-item"><i class="bi bi-door-open"></i> {{ 'nav.my_classes'|trans }}</a>
+                            <a href="{{ path('app_teacher_grades') }}" class="fo-dropdown-item"><i class="bi bi-journal-check"></i> {{ 'nav.grades_assessments'|trans }}</a>
+                            <a href="{{ path('app_teacher_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-arrow-up"></i> {{ 'nav.documents'|trans }}</a>
                         </div>
                     </div>
                     {% endif %}
@@ -249,11 +259,11 @@
                     {% if is_granted('ROLE_BUSINESS_PARTNER') %}
                     <div class="fo-nav-dropdown-wrap">
                         <button class="fo-nav-link fo-has-dropdown {% if 'partner_job' in app.request.attributes.get('_route') %}active{% endif %}">
-                            Partner <i class="bi bi-chevron-down fo-caret"></i>
+                            {{ 'nav.partner'|trans }} <i class="bi bi-chevron-down fo-caret"></i>
                         </button>
                         <div class="fo-dropdown-menu">
-                            <a href="{{ path('app_partner_job_offer_index') }}" class="fo-dropdown-item"><i class="bi bi-list-ul"></i> My Offers</a>
-                            <a href="{{ path('app_partner_job_offer_new') }}" class="fo-dropdown-item"><i class="bi bi-plus-circle"></i> Post New Offer</a>
+                            <a href="{{ path('app_partner_job_offer_index') }}" class="fo-dropdown-item"><i class="bi bi-list-ul"></i> {{ 'nav.my_offers'|trans }}</a>
+                            <a href="{{ path('app_partner_job_offer_new') }}" class="fo-dropdown-item"><i class="bi bi-plus-circle"></i> {{ 'nav.post_new_offer'|trans }}</a>
                         </div>
                     </div>
                     {% endif %}
@@ -263,6 +273,19 @@
                     <button class="fo-theme-btn" id="themeToggle" title="Toggle theme" aria-label="Toggle theme">
                         <i class="bi bi-sun-fill"></i><i class="bi bi-moon-stars-fill"></i>
                     </button>
+
+                    <div class="fo-nav-dropdown-wrap fo-locale-wrap">
+                        <button class="fo-nav-link fo-has-dropdown fo-locale-btn" aria-label="{{ 'common.language'|trans }}">
+                            <i class="bi bi-translate"></i>
+                            <span class="d-none d-md-inline">{{ app.request.locale|upper }}</span>
+                            <i class="bi bi-chevron-down fo-caret"></i>
+                        </button>
+                        <div class="fo-dropdown-menu fo-dropdown-locale">
+                            <a href="{{ path('app_switch_locale', {locale: 'en'}) }}" class="fo-dropdown-item {% if app.request.locale == 'en' %}active{% endif %}">🇬🇧 {{ 'common.english'|trans }}</a>
+                            <a href="{{ path('app_switch_locale', {locale: 'fr'}) }}" class="fo-dropdown-item {% if app.request.locale == 'fr' %}active{% endif %}">🇫🇷 {{ 'common.french'|trans }}</a>
+                            <a href="{{ path('app_switch_locale', {locale: 'ar'}) }}" class="fo-dropdown-item {% if app.request.locale == 'ar' %}active{% endif %}">🇸🇦 {{ 'common.arabic'|trans }}</a>
+                        </div>
+                    </div>
 
                     <div class="fo-nav-dropdown-wrap fo-user-wrap">
                         <button class="fo-user-btn fo-has-dropdown">
@@ -286,9 +309,9 @@
                                 <strong>{{ app.user.profile ? app.user.profile.firstName ~ ' ' ~ app.user.profile.lastName : app.user.email }}</strong>
                                 <small>{{ app.user.email }}</small>
                             </div>
-                            <a href="{{ path('profile_edit') }}" class="fo-dropdown-item"><i class="bi bi-person-gear"></i> Profile Settings</a>
+                            <a href="{{ path('profile_edit') }}" class="fo-dropdown-item"><i class="bi bi-person-gear"></i> {{ 'nav.profile_settings'|trans }}</a>
                             <div class="fo-dropdown-divider"></div>
-                            <a href="{{ path('app_logout') }}" class="fo-dropdown-item fo-dropdown-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                            <a href="{{ path('app_logout') }}" class="fo-dropdown-item fo-dropdown-danger"><i class="bi bi-box-arrow-right"></i> {{ 'nav.logout'|trans }}</a>
                         </div>
                     </div>
 
@@ -299,33 +322,39 @@
             </div>
 
             <div class="fo-mobile-menu" id="foMobileMenu">
-                <a href="{{ path('app_home') }}" class="fo-mobile-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}"><i class="bi bi-house-door"></i> Home</a>
-                <a href="{{ path('app_event') }}" class="fo-mobile-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-calendar2-event"></i> Events</a>
-                <a href="{{ path('app_job_offer_index') }}" class="fo-mobile-link {% if 'job' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-briefcase"></i> Job Offers</a>
-                <a href="{{ path('app_forum') }}" class="fo-mobile-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-chat-square-dots"></i> Forum</a>
+                <a href="{{ path('app_home') }}" class="fo-mobile-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}"><i class="bi bi-house-door"></i> {{ 'nav.home'|trans }}</a>
+                <a href="{{ path('app_event') }}" class="fo-mobile-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-calendar2-event"></i> {{ 'nav.events'|trans }}</a>
+                <a href="{{ path('app_job_offer_index') }}" class="fo-mobile-link {% if 'job' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-briefcase"></i> {{ 'nav.job_offers'|trans }}</a>
+                <a href="{{ path('app_forum') }}" class="fo-mobile-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-chat-square-dots"></i> {{ 'nav.forum'|trans }}</a>
                 {% if is_granted('ROLE_STUDENT') %}
                 <div class="fo-mobile-divider"></div>
-                <a href="{{ path('app_student_learning_index') }}" class="fo-mobile-link"><i class="bi bi-play-circle"></i> My Learning</a>
-                <a href="{{ path('app_espace_etudiant_dashboard') }}" class="fo-mobile-link"><i class="bi bi-speedometer2"></i> Espace Étudiant</a>
-                <a href="{{ path('app_espace_etudiant_grades') }}" class="fo-mobile-link"><i class="bi bi-graph-up"></i> Mes Notes</a>
-                <a href="{{ path('app_espace_etudiant_reclamations') }}" class="fo-mobile-link"><i class="bi bi-exclamation-circle"></i> Réclamations</a>
-                <a href="{{ path('app_espace_etudiant_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-text"></i> Documents</a>
+                <a href="{{ path('app_student_learning_index') }}" class="fo-mobile-link"><i class="bi bi-play-circle"></i> {{ 'nav.my_learning'|trans }}</a>
+                <a href="{{ path('app_espace_etudiant_dashboard') }}" class="fo-mobile-link"><i class="bi bi-speedometer2"></i> {{ 'nav.espace_etudiant'|trans }}</a>
+                <a href="{{ path('app_espace_etudiant_grades') }}" class="fo-mobile-link"><i class="bi bi-graph-up"></i> {{ 'nav.mes_notes'|trans }}</a>
+                <a href="{{ path('app_espace_etudiant_reclamations') }}" class="fo-mobile-link"><i class="bi bi-exclamation-circle"></i> {{ 'nav.reclamations'|trans }}</a>
+                <a href="{{ path('app_espace_etudiant_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-text"></i> {{ 'nav.documents'|trans }}</a>
                 {% endif %}
                 {% if is_granted('ROLE_TEACHER') %}
                 <div class="fo-mobile-divider"></div>
-                <a href="{{ path('app_teacher_my_classes') }}" class="fo-mobile-link"><i class="bi bi-easel2"></i> My Classes</a>
-                <a href="{{ path('app_teacher_schedule') }}" class="fo-mobile-link"><i class="bi bi-calendar-week"></i> My Schedule</a>
-                <a href="{{ path('app_teacher_grades') }}" class="fo-mobile-link"><i class="bi bi-journal-check"></i> Grades &amp; Assessments</a>
-                <a href="{{ path('app_teacher_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-arrow-up"></i> Documents</a>
+                <a href="{{ path('app_teacher_my_classes') }}" class="fo-mobile-link"><i class="bi bi-easel2"></i> {{ 'nav.my_classes'|trans }}</a>
+                <a href="{{ path('app_teacher_grades') }}" class="fo-mobile-link"><i class="bi bi-journal-check"></i> {{ 'nav.grades_assessments'|trans }}</a>
+                <a href="{{ path('app_teacher_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-arrow-up"></i> {{ 'nav.documents'|trans }}</a>
                 {% endif %}
                 {% if is_granted('ROLE_BUSINESS_PARTNER') %}
                 <div class="fo-mobile-divider"></div>
-                <a href="{{ path('app_partner_job_offer_index') }}" class="fo-mobile-link"><i class="bi bi-buildings"></i> My Offers</a>
-                <a href="{{ path('app_partner_job_offer_new') }}" class="fo-mobile-link"><i class="bi bi-plus-circle"></i> Post Offer</a>
+                <a href="{{ path('app_partner_job_offer_index') }}" class="fo-mobile-link"><i class="bi bi-buildings"></i> {{ 'nav.my_offers'|trans }}</a>
+                <a href="{{ path('app_partner_job_offer_new') }}" class="fo-mobile-link"><i class="bi bi-plus-circle"></i> {{ 'nav.post_new_offer'|trans }}</a>
                 {% endif %}
                 <div class="fo-mobile-divider"></div>
-                <a href="{{ path('profile_edit') }}" class="fo-mobile-link"><i class="bi bi-person-gear"></i> Profile Settings</a>
-                <a href="{{ path('app_logout') }}" class="fo-mobile-link fo-mobile-danger"><i class="bi bi-box-arrow-right"></i> Logout</a>
+                {# Language switcher in mobile menu #}
+                <div class="fo-mobile-locale-group">
+                    <a href="{{ path('app_switch_locale', {locale: 'en'}) }}" class="fo-mobile-link {% if app.request.locale == 'en' %}active{% endif %}">🇬🇧 {{ 'common.english'|trans }}</a>
+                    <a href="{{ path('app_switch_locale', {locale: 'fr'}) }}" class="fo-mobile-link {% if app.request.locale == 'fr' %}active{% endif %}">🇫🇷 {{ 'common.french'|trans }}</a>
+                    <a href="{{ path('app_switch_locale', {locale: 'ar'}) }}" class="fo-mobile-link {% if app.request.locale == 'ar' %}active{% endif %}">🇸🇦 {{ 'common.arabic'|trans }}</a>
+                </div>
+                <div class="fo-mobile-divider"></div>
+                <a href="{{ path('profile_edit') }}" class="fo-mobile-link"><i class="bi bi-person-gear"></i> {{ 'nav.profile_settings'|trans }}</a>
+                <a href="{{ path('app_logout') }}" class="fo-mobile-link fo-mobile-danger"><i class="bi bi-box-arrow-right"></i> {{ 'nav.logout'|trans }}</a>
             </div>
         </nav>
 

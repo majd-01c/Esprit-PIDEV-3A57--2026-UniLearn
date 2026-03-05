@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Login - UniLearn{% endblock %}
+{% block title %}{{ 'auth.login'|trans }} - UniLearn{% endblock %}
 
 {% block body %}
 <div class="container">
@@ -16,7 +16,7 @@
                         <h1 class="h3 mb-2 fw-bold gradient-text">
                             UniLearn
                         </h1>
-                        <p class="text-muted">Welcome back! Please sign in to continue</p>
+                        <p class="text-muted">{{ 'auth.welcome_back'|trans }}</p>
                     </div>
 
                     {# Error Alert #}
@@ -31,7 +31,7 @@
                     <form method="post" action="{{ path('app_login') }}">
                         <div class="mb-4">
                             <label for="inputEmail" class="form-label">
-                                <i class="bi bi-envelope"></i> Email Address
+                                <i class="bi bi-envelope"></i> {{ 'auth.email_address'|trans }}
                             </label>
                             <input type="email" 
                                    value="{{ last_username }}" 
@@ -46,7 +46,7 @@
 
                         <div class="mb-4">
                             <label for="inputPassword" class="form-label">
-                                <i class="bi bi-lock"></i> Password
+                                <i class="bi bi-lock"></i> {{ 'auth.password'|trans }}
                             </label>
                             <div class="input-group">
                                 <input type="password" 
@@ -68,15 +68,19 @@
                             <div class="form-check">
                                 <input type="checkbox" name="_remember_me" class="form-check-input" id="remember_me">
                                 <label class="form-check-label" for="remember_me">
-                                    Remember me
+                                    {{ 'auth.remember_me'|trans }}
                                 </label>
                             </div>
+<<<<<<< HEAD
                             <a href="{{ path('app_forgot_password') }}" class="text-decoration-none small">Forgot password?</a>
+=======
+                            <a href="{{ path('app_forgot_password') }}" class="text-decoration-none small">{{ 'auth.forgot_password'|trans }}</a>
+>>>>>>> dc516c3c2f39e527e8923080db25bb6aadd8551d
                         </div>
 
                         <div class="d-grid mb-4">
                             <button class="btn btn-primary btn-lg" type="submit">
-                                <i class="bi bi-box-arrow-in-right"></i> Sign In
+                                <i class="bi bi-box-arrow-in-right"></i> {{ 'auth.sign_in'|trans }}
                             </button>
                         </div>
                     </form>
@@ -84,10 +88,10 @@
                     {# Face ID Login Option #}
                     <div class="text-center mb-3">
                         <div class="d-flex align-items-center mb-3">
-                            <hr class="flex-grow-1"><span class="px-3 text-muted small">OR</span><hr class="flex-grow-1">
+                            <hr class="flex-grow-1"><span class="px-3 text-muted small">{{ 'auth.or'|trans }}</span><hr class="flex-grow-1">
                         </div>
                         <a href="{{ path('face_login_page') }}" class="btn btn-outline-light w-100">
-                            <i class="bi bi-person-bounding-box"></i> Sign in with Face ID
+                            <i class="bi bi-person-bounding-box"></i> {{ 'auth.face_id_login'|trans }}
                         </a>
                     </div>
 
@@ -95,7 +99,7 @@
                     <div class="text-center">
                         <small class="text-muted">
                             <i class="bi bi-shield-check"></i> 
-                            Secure login powered by Symfony
+                            {{ 'auth.secure_login'|trans }}
                         </small>
                     </div>
                 </div>
@@ -103,7 +107,15 @@
             
             {# Copyright #}
             <div class="text-center mt-4">
-                <small class="text-white-50">© 2026 UniLearn. All rights reserved.</small>
+                <small class="text-white-50">{{ 'auth.copyright'|trans }}</small>
+            </div>
+            {# Language Switcher #}
+            <div class="text-center mt-3">
+                <a href="{{ path('app_switch_locale', {locale: 'en'}) }}?redirect_uri={{ path('app_login')|url_encode }}" class="text-white-50 text-decoration-none small {% if app.request.locale == 'en' %}fw-bold{% endif %}">EN</a>
+                <span class="text-white-50 mx-1">|</span>
+                <a href="{{ path('app_switch_locale', {locale: 'fr'}) }}?redirect_uri={{ path('app_login')|url_encode }}" class="text-white-50 text-decoration-none small {% if app.request.locale == 'fr' %}fw-bold{% endif %}">FR</a>
+                <span class="text-white-50 mx-1">|</span>
+                <a href="{{ path('app_switch_locale', {locale: 'ar'}) }}?redirect_uri={{ path('app_login')|url_encode }}" class="text-white-50 text-decoration-none small {% if app.request.locale == 'ar' %}fw-bold{% endif %}">AR</a>
             </div>
         </div>
     </div>
