@@ -17,8 +17,12 @@ use App\Enum\QuestionType;
 use App\Repository\QuizRepository;
 use App\Repository\TeacherClasseRepository;
 use App\Repository\UserAnswerRepository;
+use App\Service\AI\FileTextExtractor;
+use App\Service\AI\GeminiAIService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -32,7 +36,9 @@ class TeacherQuizController extends AbstractController
         private EntityManagerInterface $entityManager,
         private TeacherClasseRepository $teacherClasseRepository,
         private QuizRepository $quizRepository,
-        private UserAnswerRepository $userAnswerRepository
+        private UserAnswerRepository $userAnswerRepository,
+        private FileTextExtractor $fileTextExtractor,
+        private GeminiAIService $geminiAIService
     ) {}
 
     #[Route('/{teacherClasseId}/course/{courseId}/create', name: 'app_teacher_quiz_create', requirements: ['teacherClasseId' => '\d+', 'courseId' => '\d+'], methods: ['GET', 'POST'])]
@@ -206,6 +212,12 @@ class TeacherQuizController extends AbstractController
             $this->entityManager->flush();
 
             $this->addFlash('success', 'Quiz settings updated successfully!');
+            
+            // Check if user wants to exit after saving
+            $action = $request->request->get('action', 'save');
+            if ($action === 'save_exit') {
+                return $this->redirectToRoute('app_teacher_classe_show', ['id' => $teacherClasseId]);
+            }
         }
 
         return $this->render('Gestion_Program/teacher_quiz/edit.html.twig', [
@@ -499,6 +511,151 @@ class TeacherQuizController extends AbstractController
         ]);
     }
 
+    #[Route('/{teacherClasseId}/quiz/{quizId}/student/{userAnswerId}/review', name: 'app_teacher_quiz_review_answers', requirements: ['teacherClasseId' => '\d+', 'quizId' => '\d+', 'userAnswerId' => '\d+'], methods: ['GET'])]
+    public function reviewStudentAnswers(int $teacherClasseId, int $quizId, int $userAnswerId): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $teacherClasse = $this->teacherClasseRepository->find($teacherClasseId);
+        
+        if (!$teacherClasse || $teacherClasse->getTeacher()->getId() !== $user->getId()) {
+            $this->addFlash('error', 'Unauthorized action.');
+            return $this->redirectToRoute('app_teacher_my_classes');
+        }
+
+        $quiz = $this->quizRepository->find($quizId);
+        if (!$quiz || !$this->verifyQuizBelongsToTeacher($quiz, $teacherClasse)) {
+            $this->addFlash('error', 'Quiz not found.');
+            return $this->redirectToRoute('app_teacher_classe_show', ['id' => $teacherClasseId]);
+        }
+
+        $userAnswer = $this->userAnswerRepository->find($userAnswerId);
+        if (!$userAnswer || $userAnswer->getQuiz()->getId() !== $quiz->getId()) {
+            $this->addFlash('error', 'Student submission not found.');
+            return $this->redirectToRoute('app_teacher_quiz_results', [
+                'teacherClasseId' => $teacherClasseId,
+                'quizId' => $quizId
+            ]);
+        }
+
+        // Get only TEXT type answers
+        $textAnswers = [];
+        foreach ($userAnswer->getAnswers() as $answer) {
+            if ($answer->getQuestion()->getType() === QuestionType::TEXT) {
+                $textAnswers[] = $answer;
+            }
+        }
+
+        return $this->render('Gestion_Program/teacher_quiz/review_answers.html.twig', [
+            'teacherClasse' => $teacherClasse,
+            'quiz' => $quiz,
+            'userAnswer' => $userAnswer,
+            'textAnswers' => $textAnswers,
+        ]);
+    }
+
+    #[Route('/{teacherClasseId}/quiz/{quizId}/answer/{answerId}/detect-ai', name: 'app_teacher_quiz_detect_ai', requirements: ['teacherClasseId' => '\d+', 'quizId' => '\d+', 'answerId' => '\d+'], methods: ['POST'])]
+    public function detectAI(Request $request, int $teacherClasseId, int $quizId, int $answerId): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $teacherClasse = $this->teacherClasseRepository->find($teacherClasseId);
+        
+        if (!$teacherClasse || $teacherClasse->getTeacher()->getId() !== $user->getId()) {
+            return new JsonResponse(['error' => 'Unauthorized'], 403);
+        }
+
+        $quiz = $this->quizRepository->find($quizId);
+        if (!$quiz || !$this->verifyQuizBelongsToTeacher($quiz, $teacherClasse)) {
+            return new JsonResponse(['error' => 'Quiz not found'], 404);
+        }
+
+        $answer = $this->entityManager->getRepository(Answer::class)->find($answerId);
+        if (!$answer || $answer->getUserAnswer()->getQuiz()->getId() !== $quiz->getId()) {
+            return new JsonResponse(['error' => 'Answer not found'], 404);
+        }
+
+        if ($answer->getQuestion()->getType() !== QuestionType::TEXT) {
+            return new JsonResponse(['error' => 'AI detection only works on text answers'], 400);
+        }
+
+        if (empty(trim($answer->getTextAnswer() ?? ''))) {
+            return new JsonResponse(['error' => 'No text answer to analyze'], 400);
+        }
+
+        // Run AI detection
+        $result = $this->geminiAIService->detectAIContent(
+            $answer->getQuestion()->getQuestionText(),
+            $answer->getTextAnswer()
+        );
+
+        // Save the result
+        $answer->setAiDetectionScore($result['aiProbability']);
+        $answer->setAiDetectionResult(json_encode($result));
+        $this->entityManager->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'aiProbability' => $result['aiProbability'],
+            'analysis' => $result['analysis'],
+            'indicators' => $result['indicators'],
+        ]);
+    }
+
+    #[Route('/{teacherClasseId}/quiz/{quizId}/student/{userAnswerId}/detect-all-ai', name: 'app_teacher_quiz_detect_all_ai', requirements: ['teacherClasseId' => '\d+', 'quizId' => '\d+', 'userAnswerId' => '\d+'], methods: ['POST'])]
+    public function detectAllAI(int $teacherClasseId, int $quizId, int $userAnswerId): JsonResponse
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $teacherClasse = $this->teacherClasseRepository->find($teacherClasseId);
+        
+        if (!$teacherClasse || $teacherClasse->getTeacher()->getId() !== $user->getId()) {
+            return new JsonResponse(['error' => 'Unauthorized'], 403);
+        }
+
+        $quiz = $this->quizRepository->find($quizId);
+        if (!$quiz || !$this->verifyQuizBelongsToTeacher($quiz, $teacherClasse)) {
+            return new JsonResponse(['error' => 'Quiz not found'], 404);
+        }
+
+        $userAnswer = $this->userAnswerRepository->find($userAnswerId);
+        if (!$userAnswer || $userAnswer->getQuiz()->getId() !== $quiz->getId()) {
+            return new JsonResponse(['error' => 'Submission not found'], 404);
+        }
+
+        $results = [];
+        foreach ($userAnswer->getAnswers() as $answer) {
+            if ($answer->getQuestion()->getType() !== QuestionType::TEXT) {
+                continue;
+            }
+            if (empty(trim($answer->getTextAnswer() ?? ''))) {
+                continue;
+            }
+
+            $result = $this->geminiAIService->detectAIContent(
+                $answer->getQuestion()->getQuestionText(),
+                $answer->getTextAnswer()
+            );
+
+            $answer->setAiDetectionScore($result['aiProbability']);
+            $answer->setAiDetectionResult(json_encode($result));
+
+            $results[] = [
+                'answerId' => $answer->getId(),
+                'aiProbability' => $result['aiProbability'],
+                'analysis' => $result['analysis'],
+                'indicators' => $result['indicators'],
+            ];
+        }
+
+        $this->entityManager->flush();
+
+        return new JsonResponse([
+            'success' => true,
+            'results' => $results,
+        ]);
+    }
+
     #[Route('/{teacherClasseId}/quiz/{quizId}/delete', name: 'app_teacher_quiz_delete', requirements: ['teacherClasseId' => '\d+', 'quizId' => '\d+'], methods: ['POST'])]
     public function delete(Request $request, int $teacherClasseId, int $quizId): Response
     {
@@ -566,5 +723,231 @@ class TeacherQuizController extends AbstractController
         }
 
         return false;
+    }
+
+    #[Route('/{teacherClasseId}/course/{courseId}/ai-generate', name: 'app_teacher_quiz_ai_generate', requirements: ['teacherClasseId' => '\d+', 'courseId' => '\d+'], methods: ['GET', 'POST'])]
+    public function aiGenerate(Request $request, int $teacherClasseId, int $courseId): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+        $teacherClasse = $this->teacherClasseRepository->find($teacherClasseId);
+        
+        if (!$teacherClasse || $teacherClasse->getTeacher()->getId() !== $user->getId()) {
+            $this->addFlash('error', 'Unauthorized action.');
+            return $this->redirectToRoute('app_teacher_my_classes');
+        }
+
+        $classeCourse = $this->entityManager->getRepository(ClasseCourse::class)->find($courseId);
+        if (!$classeCourse) {
+            $this->addFlash('error', 'Course not found.');
+            return $this->redirectToRoute('app_teacher_classe_show', ['id' => $teacherClasseId]);
+        }
+
+        // Verify the course belongs to the teacher's module
+        $classeModule = $classeCourse->getClasseModule();
+        if (!$classeModule || !$teacherClasse->getModule() || 
+            $classeModule->getModule()->getId() !== $teacherClasse->getModule()->getId()) {
+            $this->addFlash('error', 'You can only add quizzes to your own module.');
+            return $this->redirectToRoute('app_teacher_classe_show', ['id' => $teacherClasseId]);
+        }
+
+        if ($request->isMethod('POST')) {
+            $action = $request->request->get('action');
+
+            if ($action === 'generate') {
+                // Generate questions from uploaded file
+                if (!$this->isCsrfTokenValid('ai_generate'.$teacherClasseId, $request->request->get('_token'))) {
+                    $this->addFlash('error', 'Invalid CSRF token.');
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+
+                /** @var UploadedFile|null $file */
+                $file = $request->files->get('source_file');
+                $numQuestions = (int) $request->request->get('num_questions', 5);
+                $difficulty = $request->request->get('difficulty', 'medium');
+
+                if (!$file) {
+                    $this->addFlash('error', 'Please upload a file.');
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+
+                if (!$this->fileTextExtractor->isSupported($file->getClientOriginalName())) {
+                    $this->addFlash('error', 'Unsupported file type. Please upload PDF, DOCX, or TXT files.');
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+
+                try {
+                    // Extract text from file (pass original filename for extension detection)
+                    $extractedText = $this->fileTextExtractor->extractText(
+                        $file->getPathname(),
+                        $file->getClientOriginalName()
+                    );
+                    
+                    if (strlen($extractedText) < 100) {
+                        $this->addFlash('warning', 'The file contains very little text. Results may vary.');
+                    }
+
+                    // Generate questions using AI
+                    $generatedQuestions = $this->geminiAIService->generateQuizQuestions(
+                        $extractedText,
+                        $numQuestions,
+                        $difficulty
+                    );
+
+                    // Store in session for creation step
+                    $request->getSession()->set('ai_generated_questions', $generatedQuestions);
+                    $request->getSession()->set('ai_quiz_config', [
+                        'numQuestions' => $numQuestions,
+                        'difficulty' => $difficulty,
+                    ]);
+
+                    $this->addFlash('success', sprintf('Generated %d questions! Review and create the quiz.', count($generatedQuestions)));
+                    
+                    // Redirect to avoid Turbo Drive error
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+
+                } catch (\Exception $e) {
+                    $this->addFlash('error', 'AI generation failed: ' . $e->getMessage());
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+            } elseif ($action === 'create_quiz') {
+                // Create quiz from generated questions
+                if (!$this->isCsrfTokenValid('create_ai_quiz'.$teacherClasseId, $request->request->get('_token'))) {
+                    $this->addFlash('error', 'Invalid CSRF token.');
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+
+                $quizTitle = trim($request->request->get('quiz_title', ''));
+                $quizDescription = trim($request->request->get('quiz_description', ''));
+                $selectedQuestions = $request->request->all('selected_questions');
+                $storedQuestions = $request->getSession()->get('ai_generated_questions', []);
+
+                if (empty($quizTitle)) {
+                    $this->addFlash('error', 'Quiz title is required.');
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+
+                if (empty($selectedQuestions)) {
+                    $this->addFlash('error', 'Please select at least one question.');
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+
+                try {
+                    // Create the Contenu for the quiz
+                    $contenu = new Contenu();
+                    $contenu->setTitle($quizTitle);
+                    $contenu->setType(ContenuType::QUIZ);
+                    $contenu->setPublished(true);
+                    $contenu->setCreatedAt(new \DateTime());
+                    $contenu->setUpdatedAt(new \DateTime());
+                    $this->entityManager->persist($contenu);
+
+                    // Create the Quiz
+                    $quiz = new Quiz();
+                    $quiz->setContenu($contenu);
+                    $quiz->setTitle($quizTitle);
+                    $quiz->setDescription($quizDescription ?: 'AI Generated Quiz');
+                    $quiz->setPassingScore(50);
+                    $quiz->setShuffleQuestions(true);
+                    $quiz->setShuffleChoices(true);
+                    $quiz->setShowCorrectAnswers(true);
+                    $this->entityManager->persist($quiz);
+
+                    // Add selected questions
+                    $position = 0;
+                    foreach ($selectedQuestions as $index) {
+                        if (!isset($storedQuestions[$index])) continue;
+                        
+                        $qData = $storedQuestions[$index];
+                        
+                        $question = new Question();
+                        $question->setQuiz($quiz);
+                        $question->setQuestionText($qData['questionText']);
+                        $question->setType(QuestionType::MCQ);
+                        $question->setPoints($qData['points'] ?? 1);
+                        $question->setPosition($position++);
+                        $question->setExplanation($qData['explanation'] ?? null);
+                        $this->entityManager->persist($question);
+
+                        // Add choices
+                        $choicePosition = 0;
+                        foreach ($qData['choices'] ?? [] as $cData) {
+                            $choice = new Choice();
+                            $choice->setQuestion($question);
+                            $choice->setChoiceText($cData['text']);
+                            $choice->setIsCorrect($cData['isCorrect'] ?? false);
+                            $choice->setPosition($choicePosition++);
+                            $this->entityManager->persist($choice);
+                        }
+                    }
+
+                    // Link contenu to course
+                    $course = $classeCourse->getCourse();
+                    $courseContenu = new CourseContenu();
+                    $courseContenu->setCourse($course);
+                    $courseContenu->setContenu($contenu);
+                    $this->entityManager->persist($courseContenu);
+
+                    // Create ClasseContenu for visibility
+                    $classeContenu = new ClasseContenu();
+                    $classeContenu->setClasseCourse($classeCourse);
+                    $classeContenu->setContenu($contenu);
+                    $classeContenu->setIsHidden(false);
+                    $this->entityManager->persist($classeContenu);
+
+                    $this->entityManager->flush();
+
+                    // Clear session
+                    $request->getSession()->remove('ai_generated_questions');
+                    $request->getSession()->remove('ai_quiz_config');
+
+                    $this->addFlash('success', sprintf('Quiz "%s" created with %d questions!', $quizTitle, count($selectedQuestions)));
+                    return $this->redirectToRoute('app_teacher_quiz_edit', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'quizId' => $quiz->getId()
+                    ]);
+
+                } catch (\Exception $e) {
+                    $this->addFlash('error', 'Failed to create quiz: ' . $e->getMessage());
+                    return $this->redirectToRoute('app_teacher_quiz_ai_generate', [
+                        'teacherClasseId' => $teacherClasseId,
+                        'courseId' => $courseId
+                    ]);
+                }
+            }
+        }
+
+        // For GET requests, load any stored questions from session
+        $generatedQuestions = $request->getSession()->get('ai_generated_questions');
+
+        return $this->render('Gestion_Program/teacher_quiz/ai_generate.html.twig', [
+            'teacherClasse' => $teacherClasse,
+            'classeCourse' => $classeCourse,
+            'generatedQuestions' => $generatedQuestions,
+        ]);
     }
 }

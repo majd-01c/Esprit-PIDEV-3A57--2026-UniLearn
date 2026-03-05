@@ -16,12 +16,26 @@
         <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
         <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
         <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
-        <link rel="stylesheet" href="{{ asset('assets/styles/app.css') }}">
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
         {# Disable HTML5 native validation on every form — server-side validation handles all feedback #}
         <script>
             document.addEventListener('turbo:load', function () {
                 document.querySelectorAll('form').forEach(function (f) { f.setAttribute('novalidate', ''); });
+
+                // Password visibility toggle
+                document.querySelectorAll('.toggle-password').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var input = btn.dataset.target
+                            ? document.getElementById(btn.dataset.target)
+                            : btn.closest('.input-group').querySelector('input');
+                        if (!input) return;
+                        var isPassword = input.type === 'password';
+                        input.type = isPassword ? 'text' : 'password';
+                        var icon = btn.querySelector('i');
+                        icon.classList.toggle('bi-eye', !isPassword);
+                        icon.classList.toggle('bi-eye-slash', isPassword);
+                    });
+                });
             });
         </script>
         {% block stylesheets %}{% endblock %}
@@ -59,7 +73,7 @@
                 </a>
                 <span class="sidebar-section-label">Student Services</span>
                 <a class="sidebar-link {% if 'admin_reclamation' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_reclamations') }}">
-                    <i class="bi bi-exclamation-triangle-fill"></i><span>Réclamations</span>
+                    <i class="bi bi-exclamation-triangle-fill"></i><span>Complaints</span>
                 </a>
                 <a class="sidebar-link {% if 'admin_document' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_document_requests') }}">
                     <i class="bi bi-file-earmark-text-fill"></i><span>Document Requests</span>
@@ -68,7 +82,7 @@
                     <i class="bi bi-calendar-week-fill"></i><span>Schedules</span>
                 </a>
                 <span class="sidebar-section-label">Academics</span>
-                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme') }}">
+                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme_programs') }}">
                     <i class="bi bi-journal-bookmark-fill"></i><span>Programs</span>
                 </a>
                 <a class="sidebar-link {% if 'classe' in app.request.attributes.get('_route') and 'teacher' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_classe') }}">
@@ -135,6 +149,13 @@
                     <span class="badge bg-warning text-dark ms-2">{{ pendingJobOffersCount }}</span>
                     {% endif %}
                 </a>
+                <span class="sidebar-section-label">Account</span>
+                <a class="sidebar-link {% if app.request.attributes.get('_route') == 'profile_edit' %}active{% endif %}" href="{{ path('profile_edit') }}">
+                    <i class="bi bi-person-gear"></i><span>Profile Settings</span>
+                </a>
+                <a class="sidebar-link {% if app.request.attributes.get('_route') == 'profile_change_password' %}active{% endif %}" href="{{ path('profile_change_password') }}">
+                    <i class="bi bi-key-fill"></i><span>Change Password</span>
+                </a>
                 {% endif %}
             </div>
         </div>
@@ -151,7 +172,15 @@
             <div class="topbar-user">
                 <div class="dropdown">
                     <button class="btn btn-link text-decoration-none dropdown-toggle d-flex align-items-center gap-2" type="button" data-bs-toggle="dropdown">
-                        <div class="user-avatar"><i class="bi bi-person-circle fs-4"></i></div>
+                        <div class="user-avatar">
+                            {% if app.user.profile and app.user.profile.photo %}
+                                <img src="{{ vich_uploader_asset(app.user.profile, 'photoFile') }}" alt="Avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                            {% elseif app.user.profile and app.user.profile.avatarFilename %}
+                                <img src="{{ asset(app.user.profile.avatarFilename) }}" alt="Avatar" style="width:32px;height:32px;border-radius:50%;object-fit:cover;">
+                            {% else %}
+                                <i class="bi bi-person-circle fs-4"></i>
+                            {% endif %}
+                        </div>
                         <div class="user-info text-start d-none d-md-block">
                             <div class="user-name fw-semibold">{{ app.user.profile ? app.user.profile.firstName ~ ' ' ~ app.user.profile.lastName : app.user.email }}</div>
                             <small class="user-role text-muted">{{ app.user.role }}</small>
@@ -184,8 +213,6 @@
 
                 <div class="fo-navbar-links" id="foNavLinks">
                     <a href="{{ path('app_home') }}" class="fo-nav-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}">Home</a>
-                    <a href="{{ path('app_programme') }}" class="fo-nav-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}">Programmes</a>
-                    <a href="{{ path('app_classe') }}" class="fo-nav-link {% if 'classe' in app.request.attributes.get('_route') and 'teacher' not in app.request.attributes.get('_route') and 'student' not in app.request.attributes.get('_route') %}active{% endif %}">Classes</a>
                     <a href="{{ path('app_event') }}" class="fo-nav-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}">Events</a>
                     <a href="{{ path('app_job_offer_index') }}" class="fo-nav-link {% if 'job' in app.request.attributes.get('_route') and 'partner' not in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}">Jobs</a>
                     <a href="{{ path('app_forum') }}" class="fo-nav-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}">Forum</a>
@@ -206,7 +233,17 @@
                     {% endif %}
 
                     {% if is_granted('ROLE_TEACHER') %}
-                    <a href="{{ path('app_teacher_my_classes') }}" class="fo-nav-link {% if 'teacher_classe' in app.request.attributes.get('_route') %}active{% endif %}">My Classes</a>
+                    <div class="fo-nav-dropdown-wrap">
+                        <button class="fo-nav-link fo-has-dropdown {% if 'teacher_classe' in app.request.attributes.get('_route') or 'teacher_grade' in app.request.attributes.get('_route') or 'teacher_document' in app.request.attributes.get('_route') or 'teacher_schedule' in app.request.attributes.get('_route') %}active{% endif %}">
+                            Teaching <i class="bi bi-chevron-down fo-caret"></i>
+                        </button>
+                        <div class="fo-dropdown-menu">
+                            <a href="{{ path('app_teacher_my_classes') }}" class="fo-dropdown-item"><i class="bi bi-door-open"></i> My Classes</a>
+                            <a href="{{ path('app_teacher_schedule') }}" class="fo-dropdown-item"><i class="bi bi-calendar-week"></i> My Schedule</a>
+                            <a href="{{ path('app_teacher_grades') }}" class="fo-dropdown-item"><i class="bi bi-journal-check"></i> Grades &amp; Assessments</a>
+                            <a href="{{ path('app_teacher_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-arrow-up"></i> Documents</a>
+                        </div>
+                    </div>
                     {% endif %}
 
                     {% if is_granted('ROLE_BUSINESS_PARTNER') %}
@@ -229,7 +266,15 @@
 
                     <div class="fo-nav-dropdown-wrap fo-user-wrap">
                         <button class="fo-user-btn fo-has-dropdown">
-                            <div class="fo-user-avatar"><i class="bi bi-person-fill"></i></div>
+                            <div class="fo-user-avatar">
+                                {% if app.user.profile and app.user.profile.photo %}
+                                    <img src="{{ vich_uploader_asset(app.user.profile, 'photoFile') }}" alt="Avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+                                {% elseif app.user.profile and app.user.profile.avatarFilename %}
+                                    <img src="{{ asset(app.user.profile.avatarFilename) }}" alt="Avatar" style="width:100%;height:100%;border-radius:50%;object-fit:cover;">
+                                {% else %}
+                                    <i class="bi bi-person-fill"></i>
+                                {% endif %}
+                            </div>
                             <div class="fo-user-meta d-none d-lg-flex">
                                 <span class="fo-user-name">{{ app.user.profile ? app.user.profile.firstName : app.user.email }}</span>
                                 <span class="fo-user-role">{{ app.user.role }}</span>
@@ -255,8 +300,6 @@
 
             <div class="fo-mobile-menu" id="foMobileMenu">
                 <a href="{{ path('app_home') }}" class="fo-mobile-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}"><i class="bi bi-house-door"></i> Home</a>
-                <a href="{{ path('app_programme') }}" class="fo-mobile-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-journal-bookmark"></i> Programmes</a>
-                <a href="{{ path('app_classe') }}" class="fo-mobile-link {% if 'classe' in app.request.attributes.get('_route') and 'teacher' not in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-grid-3x3-gap"></i> Classes</a>
                 <a href="{{ path('app_event') }}" class="fo-mobile-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-calendar2-event"></i> Events</a>
                 <a href="{{ path('app_job_offer_index') }}" class="fo-mobile-link {% if 'job' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-briefcase"></i> Job Offers</a>
                 <a href="{{ path('app_forum') }}" class="fo-mobile-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-chat-square-dots"></i> Forum</a>
@@ -271,6 +314,9 @@
                 {% if is_granted('ROLE_TEACHER') %}
                 <div class="fo-mobile-divider"></div>
                 <a href="{{ path('app_teacher_my_classes') }}" class="fo-mobile-link"><i class="bi bi-easel2"></i> My Classes</a>
+                <a href="{{ path('app_teacher_schedule') }}" class="fo-mobile-link"><i class="bi bi-calendar-week"></i> My Schedule</a>
+                <a href="{{ path('app_teacher_grades') }}" class="fo-mobile-link"><i class="bi bi-journal-check"></i> Grades &amp; Assessments</a>
+                <a href="{{ path('app_teacher_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-arrow-up"></i> Documents</a>
                 {% endif %}
                 {% if is_granted('ROLE_BUSINESS_PARTNER') %}
                 <div class="fo-mobile-divider"></div>
