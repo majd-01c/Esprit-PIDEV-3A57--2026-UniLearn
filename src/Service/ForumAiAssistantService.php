@@ -52,17 +52,30 @@ class ForumAiAssistantService
         $keywordResults = $this->searchByKeywords($question, $categoryId, 15);
         
         if (empty($keywordResults)) {
+            // No similar topics, but still generate a direct AI answer
+            $directAnswer = null;
+            if ($this->geminiApi->isAvailable()) {
+                $directAnswer = $this->geminiApi->generateTopicAnswer($question, $question, []);
+            }
             return [
                 'topics' => [],
-                'aiAdvice' => 'No similar topics found. You can create a new topic!',
+                'aiAdvice' => $directAnswer ? null : 'No similar topics found. You can create a new topic!',
+                'directAnswer' => $directAnswer,
                 'fromCache' => false
             ];
         }
 
         // Step 2: AI enhancement (if available)
         $aiResults = [];
+        $directAnswer = null;
         if ($this->geminiApi->isAvailable() && count($keywordResults) > 0) {
             $aiResults = $this->geminiApi->findSimilarTopics($question, $keywordResults);
+            $directAnswer = $aiResults['directAnswer'] ?? null;
+        }
+
+        // If AI didn't return a directAnswer from findSimilarTopics, generate one
+        if (!$directAnswer && $this->geminiApi->isAvailable()) {
+            $directAnswer = $this->geminiApi->generateTopicAnswer($question, $question, []);
         }
 
         // Combine results
@@ -74,6 +87,7 @@ class ForumAiAssistantService
         return [
             'topics' => $finalResults,
             'aiAdvice' => $aiResults['advice'] ?? null,
+            'directAnswer' => $directAnswer,
             'fromCache' => false
         ];
     }
@@ -86,6 +100,36 @@ class ForumAiAssistantService
         // Extract meaningful keywords
         $keywords = $this->extractKeywords($question);
         
+        // Try a broad search with the full question text as well
+        $results = $this->executeKeywordSearch($keywords, $categoryId, $limit);
+        
+        // If strict keywords returned nothing, try broader partial matching
+        if (empty($results)) {
+            $broadKeywords = $this->extractBroadKeywords($question);
+            if (!empty($broadKeywords) && $broadKeywords !== $keywords) {
+                $results = $this->executeKeywordSearch($broadKeywords, $categoryId, $limit);
+            }
+        }
+        
+        // Last resort: search with the raw question words (no stop word filtering)
+        if (empty($results)) {
+            $rawWords = array_unique(array_filter(
+                preg_split('/\s+/', strtolower(trim($question))),
+                fn($w) => strlen($w) >= 2
+            ));
+            if (!empty($rawWords)) {
+                $results = $this->executeKeywordSearch(array_values($rawWords), $categoryId, $limit);
+            }
+        }
+        
+        return $results;
+    }
+
+    /**
+     * Execute keyword-based database search
+     */
+    private function executeKeywordSearch(array $keywords, ?int $categoryId, int $limit): array
+    {
         if (empty($keywords)) {
             return [];
         }
@@ -99,7 +143,7 @@ class ForumAiAssistantService
             ->addOrderBy('t.createdAt', 'DESC')
             ->setMaxResults($limit);
 
-        // Build keyword search
+        // Build keyword search with OR conditions
         $keywordConditions = [];
         foreach ($keywords as $index => $keyword) {
             $keywordConditions[] = sprintf(
@@ -128,17 +172,48 @@ class ForumAiAssistantService
      */
     private function extractKeywords(string $text): array
     {
-        // Remove common words
-        $stopWords = ['how', 'what', 'when', 'where', 'why', 'who', 'the', 'is', 'are', 'was', 'were', 'can', 'could', 'should', 'would', 'do', 'does', 'did', 'i', 'my', 'me', 'you', 'your', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for'];
+        // English + French stop words
+        $stopWords = [
+            // English
+            'how', 'what', 'when', 'where', 'why', 'who', 'the', 'is', 'are', 'was', 'were',
+            'can', 'could', 'should', 'would', 'do', 'does', 'did', 'my', 'me', 'you', 'your',
+            'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'this',
+            'that', 'it', 'its', 'not', 'no', 'so', 'if', 'then', 'than', 'too', 'very',
+            'just', 'about', 'also', 'been', 'have', 'has', 'had', 'will', 'would',
+            // French
+            'le', 'la', 'les', 'un', 'une', 'des', 'du', 'de', 'et', 'ou', 'est', 'son',
+            'sa', 'ses', 'ce', 'cette', 'ces', 'qui', 'que', 'quoi', 'dans', 'par', 'pour',
+            'sur', 'avec', 'sans', 'pas', 'plus', 'ne', 'se', 'je', 'tu', 'il', 'elle',
+            'nous', 'vous', 'ils', 'elles', 'mon', 'ton', 'mes', 'tes', 'nos', 'vos',
+            'comment', 'quel', 'quelle', 'quels', 'quelles', 'aux', 'au'
+        ];
         
-        // Convert to lowercase and split
-        $words = preg_split('/\s+/', strtolower($text));
-        $words = array_filter($words, fn($w) => strlen($w) > 2);
+        // Convert to lowercase, remove punctuation, and split
+        $cleaned = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', strtolower($text));
+        $words = preg_split('/\s+/', $cleaned);
+        $words = array_filter($words, fn($w) => strlen($w) >= 2);
         
         // Remove stop words
         $keywords = array_diff($words, $stopWords);
         
         // Return unique keywords
+        return array_unique(array_values($keywords));
+    }
+
+    /**
+     * Extract broader keywords (less aggressive filtering, keep more words)
+     */
+    private function extractBroadKeywords(string $text): array
+    {
+        // Only remove the most basic stop words
+        $basicStopWords = ['a', 'i', 'an', 'the', 'is', 'le', 'la', 'un', 'une', 'de', 'et'];
+        
+        $cleaned = preg_replace('/[^\p{L}\p{N}\s]/u', ' ', strtolower($text));
+        $words = preg_split('/\s+/', $cleaned);
+        $words = array_filter($words, fn($w) => strlen($w) >= 2);
+        
+        $keywords = array_diff($words, $basicStopWords);
+        
         return array_unique(array_values($keywords));
     }
 

@@ -82,7 +82,7 @@
                     <i class="bi bi-calendar-week-fill"></i><span>Schedules</span>
                 </a>
                 <span class="sidebar-section-label">Academics</span>
-                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme') }}">
+                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme_programs') }}">
                     <i class="bi bi-journal-bookmark-fill"></i><span>Programs</span>
                 </a>
                 <a class="sidebar-link {% if 'classe' in app.request.attributes.get('_route') and 'teacher' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_classe') }}">
@@ -473,8 +473,8 @@
                     cleanupFns.push(function() { window.removeEventListener('scroll', onScroll); });
                 }
 
-                // Auto-dismiss alerts
-                document.querySelectorAll('.alert').forEach(function(el) {
+                // Auto-dismiss flash message alerts only (not all .alert elements)
+                document.querySelectorAll('.alert.alert-dismissible').forEach(function(el) {
                     setTimeout(function() {
                         if (!el || !el.isConnected) return;
                         el.classList.remove('show');
