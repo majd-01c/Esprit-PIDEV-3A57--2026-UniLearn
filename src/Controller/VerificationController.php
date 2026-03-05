@@ -75,6 +75,7 @@ class VerificationController extends AbstractController
                 $this->addFlash('error', 'Please enter the verification code.');
                 return $this->render('security/verify_email.html.twig', [
                     'user' => $user,
+                    'codeExpiryDate' => $user->getCodeExpiryDate(),
                 ]);
             }
 
@@ -83,6 +84,7 @@ class VerificationController extends AbstractController
                 $this->addFlash('error', 'Verification code has expired. Please request a new one.');
                 return $this->render('security/verify_email.html.twig', [
                     'user' => $user,
+                    'codeExpiryDate' => $user->getCodeExpiryDate(),
                     'expired' => true,
                 ]);
             }
@@ -107,6 +109,7 @@ class VerificationController extends AbstractController
 
         return $this->render('security/verify_email.html.twig', [
             'user' => $user,
+            'codeExpiryDate' => $user->getCodeExpiryDate(),
         ]);
     }
 

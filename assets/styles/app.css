@@ -2689,15 +2689,15 @@ hr {
 }
 
 [data-theme="light"] .btn-light {
-    background: #ffffff;
-    border: 1px solid rgba(0, 0, 0, 0.1);
-    color: var(--text-primary);
+    background: #f1f5f9;
+    border: 1px solid rgba(0, 0, 0, 0.15);
+    color: #1e293b;
 }
 
 [data-theme="light"] .btn-light:hover {
-    background: var(--gray-100);
-    color: var(--text-primary);
-    border-color: rgba(0, 0, 0, 0.15);
+    background: #e2e8f0;
+    color: #1e293b;
+    border-color: rgba(0, 0, 0, 0.25);
 }
 
 [data-theme="light"] .btn-primary {
@@ -3021,6 +3021,25 @@ hr {
 
 [data-theme="light"] .topbar-user .dropdown-item.text-danger:hover {
     background: rgba(239, 68, 68, 0.06);
+}
+
+/* --- Locale Switcher & Topbar btn-link buttons --- */
+[data-theme="light"] .locale-switcher-btn,
+[data-theme="light"] .locale-switcher-btn i,
+[data-theme="light"] .locale-switcher-btn span,
+[data-theme="light"] .topbar-user .dropdown-toggle,
+[data-theme="light"] .topbar-user .dropdown-toggle .user-name,
+[data-theme="light"] .topbar-user .dropdown-toggle .user-avatar,
+[data-theme="light"] .topbar-user .dropdown-toggle .user-avatar i,
+[data-theme="light"] .topbar-user .dropdown-toggle::after,
+[data-theme="light"] .theme-toggle {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .locale-switcher-btn:hover,
+[data-theme="light"] .topbar-user .dropdown-toggle:hover,
+[data-theme="light"] .theme-toggle:hover {
+    color: #4f46e5 !important;
 }
 
 /* --- Pagination --- */
@@ -6839,7 +6858,7 @@ body:not(.back-office) .table thead th {
 /* --- Admin Primary Button --- */
 .btn-admin-primary {
     background: linear-gradient(135deg, #7c3aed 0%, #6d28d9 100%);
-    color: #fff;
+    color: #ffffff !important;
     border: none;
     border-radius: var(--radius-sm);
     font-weight: 600;
@@ -6849,7 +6868,7 @@ body:not(.back-office) .table thead th {
 
 .btn-admin-primary:hover {
     background: linear-gradient(135deg, #6d28d9 0%, #5b21b6 100%);
-    color: #fff;
+    color: #ffffff !important;
     transform: translateY(-1px);
     box-shadow: 0 4px 12px rgba(124, 58, 237, 0.3);
 }
@@ -6977,6 +6996,12 @@ body:not(.back-office) .table thead th {
 .admin-quick-icon.bg-sky { background: linear-gradient(135deg, #0284c7, #38bdf8); }
 .admin-quick-icon.bg-violet { background: linear-gradient(135deg, #7c3aed, #a78bfa); }
 
+/* Stat icon variants (used on admin dashboard stat cards) */
+.stat-icon-indigo { background: rgba(99,102,241,0.18); color: #818cf8; }
+.stat-icon-emerald { background: rgba(16,185,129,0.18); color: #34d399; }
+.stat-icon-amber { background: rgba(245,158,11,0.18); color: #fbbf24; }
+.stat-icon-rose { background: rgba(239,68,68,0.18); color: #f87171; }
+
 .admin-quick-title {
     font-size: 0.88rem;
     font-weight: 600;
@@ -7093,6 +7118,12 @@ body:not(.back-office) .table thead th {
     border-color: rgba(99, 102, 241, 0.25);
 }
 
+/* Light mode stat icon variants — use deeper, more saturated colors */
+[data-theme="light"] .stat-icon-indigo { background: rgba(99,102,241,0.12); color: #4338ca; }
+[data-theme="light"] .stat-icon-emerald { background: rgba(16,185,129,0.12); color: #059669; }
+[data-theme="light"] .stat-icon-amber { background: rgba(245,158,11,0.12); color: #b45309; }
+[data-theme="light"] .stat-icon-rose { background: rgba(239,68,68,0.12); color: #dc2626; }
+
 [data-theme="light"] .admin-panel-card {
     border-color: rgba(0,0,0,0.06);
     border-left-color: rgba(99, 102, 241, 0.4);
@@ -7100,6 +7131,16 @@ body:not(.back-office) .table thead th {
 
 [data-theme="light"] .admin-panel-header {
     border-bottom-color: rgba(0,0,0,0.06);
+    color: #475569 !important;
+}
+
+/* Light mode: card headers and table headers need darker text */
+[data-theme="light"] .back-office .card-header {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .back-office .table th {
+    color: #64748b !important;
 }
 
 [data-theme="light"] .admin-quick-item {
@@ -7114,8 +7155,45 @@ body:not(.back-office) .table thead th {
     border-color: rgba(0,0,0,0.06);
 }
 
+[data-theme="light"] .admin-info-label {
+    color: #475569 !important;
+}
+
+[data-theme="light"] .admin-info-value {
+    color: #1e293b !important;
+}
+
+[data-theme="light"] .admin-quick-title {
+    color: #1e293b !important;
+}
+
+[data-theme="light"] .admin-quick-desc {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .admin-stat-label {
+    color: #64748b !important;
+}
+
+[data-theme="light"] .admin-stat-value {
+    color: #0f172a !important;
+}
+
+[data-theme="light"] .admin-panel-card .fw-semibold {
+    color: #1e293b !important;
+}
+
+[data-theme="light"] .admin-panel-card .badge {
+    color: #4338ca !important;
+}
+
+[data-theme="light"] .admin-panel-header {
+    color: #475569 !important;
+}
+
 [data-theme="light"] .admin-service-link {
     border-color: rgba(0,0,0,0.05);
+    color: #1e293b !important;
 }
 
 [data-theme="light"] .admin-service-link:hover {

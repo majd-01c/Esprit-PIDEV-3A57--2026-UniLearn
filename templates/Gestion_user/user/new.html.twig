@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Add New User - UniLearn{% endblock %}
+{% block title %}{{ 'user.create_user'|trans }} - UniLearn{% endblock %}
 
 {% block body %}
 <div class="container mt-4">
@@ -9,16 +9,16 @@
             {# Breadcrumb #}
             <nav aria-label="breadcrumb" class="mb-3">
                 <ol class="breadcrumb">
-                    <li class="breadcrumb-item"><a href="{{ path('app_home') }}" class="text-decoration-none">Home</a></li>
-                    <li class="breadcrumb-item"><a href="{{ path('app_user_index') }}" class="text-decoration-none">Users</a></li>
-                    <li class="breadcrumb-item active" aria-current="page">Add New User</li>
+                    <li class="breadcrumb-item"><a href="{{ path('app_home') }}" class="text-decoration-none">{{ 'nav.home'|trans }}</a></li>
+                    <li class="breadcrumb-item"><a href="{{ path('app_user_index') }}" class="text-decoration-none">{{ 'user.user_management'|trans }}</a></li>
+                    <li class="breadcrumb-item active" aria-current="page">{{ 'user.add_new_user'|trans }}</li>
                 </ol>
             </nav>
             
             <div class="card">
                 <div class="card-header bg-primary">
                     <h4 class="mb-0 d-flex align-items-center gap-2">
-                        <i class="bi bi-person-plus-fill"></i> Add New User
+                        <i class="bi bi-person-plus-fill"></i> {{ 'user.add_new_user'|trans }}
                     </h4>
                 </div>
                 <div class="card-body">
@@ -81,11 +81,6 @@
                                     {{ form_widget(form.isActive, {'attr': {'class': 'form-check-input', 'role': 'switch'}}) }}
                                     <label class="form-check-label">Active Account</label>
                                 </div>
-                            </div>
-                            <div class="col-12">
-                                <label class="form-label">Description / Bio</label>
-                                {{ form_widget(form.description, {'attr': {'class': 'form-control', 'rows': 3, 'placeholder': 'Brief description about the user...'}}) }}
-                                {{ form_errors(form.description) }}
                             </div>
                         </div>
                     </div>
