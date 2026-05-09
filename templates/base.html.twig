@@ -95,6 +95,9 @@
                 <a class="sidebar-link {% if 'job' in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_job_offer_index') }}">
                     <i class="bi bi-briefcase-fill"></i><span>{{ 'nav.job_offers'|trans }}</span>
                 </a>
+                <a class="sidebar-link {% if 'app_availability_' in app.request.attributes.get('_route') or 'app_timetable_' in app.request.attributes.get('_route') or 'app_room_' in app.request.attributes.get('_route') or 'app_conflict_' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_availability_index') }}">
+                    <i class="bi bi-door-open-fill"></i><span>availblety rooms</span>
+                </a>
                 
                 {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_ADMIN') and not is_granted('ROLE_TEACHER') and not is_granted('ROLE_TRAINER') and not is_granted('ROLE_BUSINESS_PARTNER') %}
                 <div class="sidebar-dropdown">
@@ -226,6 +229,7 @@
                     <a href="{{ path('app_home') }}" class="fo-nav-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}">{{ 'nav.home'|trans }}</a>
                     <a href="{{ path('app_event') }}" class="fo-nav-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.events'|trans }}</a>
                     <a href="{{ path('app_job_offer_index') }}" class="fo-nav-link {% if 'job' in app.request.attributes.get('_route') and 'partner' not in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.jobs'|trans }}</a>
+                    <a href="{{ path('app_availability_index') }}" class="fo-nav-link {% if 'app_availability_' in app.request.attributes.get('_route') or 'app_timetable_' in app.request.attributes.get('_route') or 'app_room_' in app.request.attributes.get('_route') or 'app_conflict_' in app.request.attributes.get('_route') %}active{% endif %}">availblety rooms</a>
                     <a href="{{ path('app_forum') }}" class="fo-nav-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.forum'|trans }}</a>
 
                     {% if is_granted('ROLE_STUDENT') %}
@@ -325,6 +329,7 @@
                 <a href="{{ path('app_home') }}" class="fo-mobile-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}"><i class="bi bi-house-door"></i> {{ 'nav.home'|trans }}</a>
                 <a href="{{ path('app_event') }}" class="fo-mobile-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-calendar2-event"></i> {{ 'nav.events'|trans }}</a>
                 <a href="{{ path('app_job_offer_index') }}" class="fo-mobile-link {% if 'job' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-briefcase"></i> {{ 'nav.job_offers'|trans }}</a>
+                <a href="{{ path('app_availability_index') }}" class="fo-mobile-link {% if 'app_availability_' in app.request.attributes.get('_route') or 'app_timetable_' in app.request.attributes.get('_route') or 'app_room_' in app.request.attributes.get('_route') or 'app_conflict_' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-door-open"></i> availblety rooms</a>
                 <a href="{{ path('app_forum') }}" class="fo-mobile-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-chat-square-dots"></i> {{ 'nav.forum'|trans }}</a>
                 {% if is_granted('ROLE_STUDENT') %}
                 <div class="fo-mobile-divider"></div>
