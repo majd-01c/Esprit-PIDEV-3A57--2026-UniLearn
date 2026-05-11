@@ -73,7 +73,7 @@
                 </a>
                 <span class="sidebar-section-label">{{ 'nav.student_services'|trans }}</span>
                 <a class="sidebar-link {% if 'admin_reclamation' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_reclamations') }}">
-                    <i class="bi bi-exclamation-triangle-fill"></i><span>{{ 'nav.reclamations'|trans }}</span>
+                    <i class="bi bi-exclamation-triangle-fill"></i><span>Complaints</span>
                 </a>
                 <a class="sidebar-link {% if 'admin_document' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_document_requests') }}">
                     <i class="bi bi-file-earmark-text-fill"></i><span>{{ 'nav.document_requests'|trans }}</span>
@@ -81,9 +81,9 @@
                 <a class="sidebar-link {% if 'admin_schedule' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_admin_schedules') }}">
                     <i class="bi bi-calendar-week-fill"></i><span>{{ 'nav.schedules'|trans }}</span>
                 </a>
-                <span class="sidebar-section-label">{{ 'nav.academics'|trans }}</span>
-                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme') }}">
-                    <i class="bi bi-journal-bookmark-fill"></i><span>{{ 'nav.programs'|trans }}</span>
+                <span class="sidebar-section-label">Academics</span>
+                <a class="sidebar-link {% if 'programme' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_programme_programs') }}">
+                    <i class="bi bi-journal-bookmark-fill"></i><span>Programs</span>
                 </a>
                 <a class="sidebar-link {% if 'classe' in app.request.attributes.get('_route') and 'teacher' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_classe') }}">
                     <i class="bi bi-door-open-fill"></i><span>{{ 'nav.classes'|trans }}</span>
@@ -249,13 +249,14 @@
 
                     {% if is_granted('ROLE_TEACHER') %}
                     <div class="fo-nav-dropdown-wrap">
-                        <button class="fo-nav-link fo-has-dropdown {% if 'teacher_classe' in app.request.attributes.get('_route') or 'teacher_grade' in app.request.attributes.get('_route') or 'teacher_document' in app.request.attributes.get('_route') %}active{% endif %}">
-                            {{ 'nav.teaching'|trans }} <i class="bi bi-chevron-down fo-caret"></i>
+                        <button class="fo-nav-link fo-has-dropdown {% if 'teacher_classe' in app.request.attributes.get('_route') or 'teacher_grade' in app.request.attributes.get('_route') or 'teacher_document' in app.request.attributes.get('_route') or 'teacher_schedule' in app.request.attributes.get('_route') %}active{% endif %}">
+                            Teaching <i class="bi bi-chevron-down fo-caret"></i>
                         </button>
                         <div class="fo-dropdown-menu">
-                            <a href="{{ path('app_teacher_my_classes') }}" class="fo-dropdown-item"><i class="bi bi-door-open"></i> {{ 'nav.my_classes'|trans }}</a>
-                            <a href="{{ path('app_teacher_grades') }}" class="fo-dropdown-item"><i class="bi bi-journal-check"></i> {{ 'nav.grades_assessments'|trans }}</a>
-                            <a href="{{ path('app_teacher_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-arrow-up"></i> {{ 'nav.documents'|trans }}</a>
+                            <a href="{{ path('app_teacher_my_classes') }}" class="fo-dropdown-item"><i class="bi bi-door-open"></i> My Classes</a>
+                            <a href="{{ path('app_teacher_schedule') }}" class="fo-dropdown-item"><i class="bi bi-calendar-week"></i> My Schedule</a>
+                            <a href="{{ path('app_teacher_grades') }}" class="fo-dropdown-item"><i class="bi bi-journal-check"></i> Grades &amp; Assessments</a>
+                            <a href="{{ path('app_teacher_documents') }}" class="fo-dropdown-item"><i class="bi bi-file-earmark-arrow-up"></i> Documents</a>
                         </div>
                     </div>
                     {% endif %}
@@ -341,9 +342,10 @@
                 {% endif %}
                 {% if is_granted('ROLE_TEACHER') %}
                 <div class="fo-mobile-divider"></div>
-                <a href="{{ path('app_teacher_my_classes') }}" class="fo-mobile-link"><i class="bi bi-easel2"></i> {{ 'nav.my_classes'|trans }}</a>
-                <a href="{{ path('app_teacher_grades') }}" class="fo-mobile-link"><i class="bi bi-journal-check"></i> {{ 'nav.grades_assessments'|trans }}</a>
-                <a href="{{ path('app_teacher_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-arrow-up"></i> {{ 'nav.documents'|trans }}</a>
+                <a href="{{ path('app_teacher_my_classes') }}" class="fo-mobile-link"><i class="bi bi-easel2"></i> My Classes</a>
+                <a href="{{ path('app_teacher_schedule') }}" class="fo-mobile-link"><i class="bi bi-calendar-week"></i> My Schedule</a>
+                <a href="{{ path('app_teacher_grades') }}" class="fo-mobile-link"><i class="bi bi-journal-check"></i> Grades &amp; Assessments</a>
+                <a href="{{ path('app_teacher_documents') }}" class="fo-mobile-link"><i class="bi bi-file-earmark-arrow-up"></i> Documents</a>
                 {% endif %}
                 {% if is_granted('ROLE_BUSINESS_PARTNER') %}
                 <div class="fo-mobile-divider"></div>
@@ -508,6 +510,7 @@
                 }
 
                 // Auto-dismiss only flash message alerts (dismissible ones), not inline status alerts
+                // Auto-dismiss flash message alerts only (not all .alert elements)
                 document.querySelectorAll('.alert.alert-dismissible').forEach(function(el) {
                     setTimeout(function() {
                         if (!el || !el.isConnected) return;
