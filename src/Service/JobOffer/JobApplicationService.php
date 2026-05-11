@@ -49,7 +49,12 @@ final class JobApplicationService
         $this->em->flush();
     }
 
-    public function updateStatus(JobApplication $application, JobApplicationStatus $status, ?string $customMessage = null): void
+    public function updateStatus(
+        JobApplication $application,
+        JobApplicationStatus $status,
+        ?string $customMessage = null,
+        bool $flush = true,
+    ): void
     {
         $oldStatus = $application->getStatus();
         $application->setStatus($status);
@@ -72,7 +77,9 @@ final class JobApplicationService
             $application->setStatusMessage($statusMessage);
         }
         
-        $this->em->flush();
+        if ($flush) {
+            $this->em->flush();
+        }
     }
 
     /**
@@ -88,18 +95,31 @@ final class JobApplicationService
     /** @return JobApplication[] */
     public function getApplicationsForOffer(JobOffer $offer): array
     {
-        return $this->em->getRepository(JobApplication::class)->findBy(
-            ['offer' => $offer],
-            ['createdAt' => 'DESC']
-        );
+        return $this->em->createQueryBuilder()
+            ->select('application', 'student', 'meeting')
+            ->from(JobApplication::class, 'application')
+            ->leftJoin('application.student', 'student')
+            ->leftJoin('application.meeting', 'meeting')
+            ->andWhere('application.offer = :offer')
+            ->setParameter('offer', $offer)
+            ->orderBy('application.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 
     /** @return JobApplication[] */
     public function getApplicationsForStudent(User $student): array
     {
-        return $this->em->getRepository(JobApplication::class)->findBy(
-            ['student' => $student],
-            ['createdAt' => 'DESC']
-        );
+        return $this->em->createQueryBuilder()
+            ->select('application', 'offer', 'partner', 'meeting')
+            ->from(JobApplication::class, 'application')
+            ->leftJoin('application.offer', 'offer')
+            ->leftJoin('offer.partner', 'partner')
+            ->leftJoin('application.meeting', 'meeting')
+            ->andWhere('application.student = :student')
+            ->setParameter('student', $student)
+            ->orderBy('application.createdAt', 'DESC')
+            ->getQuery()
+            ->getResult();
     }
 }

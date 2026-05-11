@@ -108,6 +108,7 @@
                         </thead>
                         <tbody>
                             {% for application in applications %}
+                                {% set meeting = application.meeting %}
                                 <tr>
                                     {# Score Column #}
                                     <td class="ps-3">
@@ -188,6 +189,13 @@
                                     {# Status #}
                                     <td>
                                         {% include 'Gestion_Job_Offre/job_offer/_application_status_badge.html.twig' with {status: application.status} only %}
+                                        {% if application.status.value == 'ACCEPTED' and meeting %}
+                                            <br>
+                                            <small class="text-muted">
+                                                <i class="bi bi-camera-video"></i>
+                                                {{ meeting.scheduledAt|date('d/m H:i') }}-{{ meeting.scheduledEndAt|date('H:i') }}
+                                            </small>
+                                        {% endif %}
                                     </td>
                                     
                                     {# Actions Toggle #}
@@ -215,6 +223,9 @@
                                                         </h6>
                                                         <form method="post" action="{{ path('app_partner_job_application_status', {id: application.id}) }}" class="status-form">
                                                             <input type="hidden" name="_token" value="{{ csrf_token('status-' ~ application.id) }}">
+                                                            <input type="hidden" name="meeting_timezone" class="meeting-timezone-input" value="">
+                                                            {% set meetingStartValue = meeting and meeting.scheduledAt ? meeting.scheduledAt|date('Y-m-d\\TH:i') : 'now'|date_modify('+1 day')|date('Y-m-d\\TH:i') %}
+                                                            {% set meetingEndValue = meeting and meeting.scheduledEndAt ? meeting.scheduledEndAt|date('Y-m-d\\TH:i') : 'now'|date_modify('+1 day +30 minutes')|date('Y-m-d\\TH:i') %}
                                                             
                                                             <div class="d-flex gap-1 flex-wrap mb-2">
                                                                 <label class="btn btn-sm {{ application.status.value == 'REVIEWED' ? 'btn-info' : 'btn-outline-info' }}">
@@ -235,6 +246,42 @@
                                                                            {{ application.status.value == 'REJECTED' ? 'checked' : '' }} autocomplete="off">
                                                                     <i class="bi bi-x-circle"></i> Reject
                                                                 </label>
+                                                            </div>
+
+                                                            <div class="meeting-schedule-section {{ application.status.value == 'ACCEPTED' ? '' : 'd-none' }} border rounded p-2 mb-2 bg-success bg-opacity-10">
+                                                                <div class="d-flex align-items-center justify-content-between gap-2 mb-2">
+                                                                    <small class="fw-bold text-success">
+                                                                        <i class="bi bi-camera-video"></i> Interview meeting
+                                                                    </small>
+                                                                    {% if meeting and application.status.value == 'ACCEPTED' %}
+                                                                        {% if meeting.canJoinNow %}
+                                                                            <a href="{{ path('app_partner_job_offer_meeting_join', {id: meeting.id}) }}" class="btn btn-success btn-sm">
+                                                                                <i class="bi bi-box-arrow-up-right"></i> Join
+                                                                            </a>
+                                                                        {% else %}
+                                                                            <button type="button" class="btn btn-outline-secondary btn-sm" disabled title="The meeting opens during its scheduled window.">
+                                                                                <i class="bi bi-lock"></i> Join
+                                                                            </button>
+                                                                        {% endif %}
+                                                                    {% endif %}
+                                                                </div>
+                                                                <div class="mb-2">
+                                                                    <label class="form-label small mb-1" for="meeting-start-{{ application.id }}">Start</label>
+                                                                    <input type="datetime-local"
+                                                                           class="form-control form-control-sm meeting-start-input"
+                                                                           id="meeting-start-{{ application.id }}"
+                                                                           name="meeting_start_at"
+                                                                           value="{{ meetingStartValue }}">
+                                                                </div>
+                                                                <div class="mb-1">
+                                                                    <label class="form-label small mb-1" for="meeting-end-{{ application.id }}">End</label>
+                                                                    <input type="datetime-local"
+                                                                           class="form-control form-control-sm meeting-end-input"
+                                                                           id="meeting-end-{{ application.id }}"
+                                                                           name="meeting_end_at"
+                                                                           value="{{ meetingEndValue }}">
+                                                                </div>
+                                                                <small class="text-muted d-block">Required when accepting. Students can join only during this window.</small>
                                                             </div>
 
                                                             <button type="submit" class="btn btn-primary btn-sm w-100">
@@ -295,15 +342,92 @@
 {{ parent() }}
 <script>
 function initApplicationsPage() {
+    function padNumber(value) {
+        return String(value).padStart(2, '0');
+    }
+
+    function formatDateTimeLocal(date) {
+        return date.getFullYear() + '-' +
+            padNumber(date.getMonth() + 1) + '-' +
+            padNumber(date.getDate()) + 'T' +
+            padNumber(date.getHours()) + ':' +
+            padNumber(date.getMinutes());
+    }
+
+    function resolveBrowserTimezone() {
+        try {
+            return Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+        } catch (e) {
+            return '';
+        }
+    }
+
+    var browserTimezone = resolveBrowserTimezone();
+
+    function setMeetingSectionState(form) {
+        var selectedRadio = form.querySelector('.status-radio:checked');
+        var accepted = selectedRadio && selectedRadio.value === 'ACCEPTED';
+        var section = form.querySelector('.meeting-schedule-section');
+        if (!section) return;
+
+        section.classList.toggle('d-none', !accepted);
+
+        var now = new Date();
+        var minValue = formatDateTimeLocal(now);
+        section.querySelectorAll('input[type="datetime-local"]').forEach(function(input) {
+            input.required = accepted;
+            input.min = minValue;
+        });
+
+        if (accepted) {
+            var startInput = form.querySelector('.meeting-start-input');
+            var endInput = form.querySelector('.meeting-end-input');
+            var defaultStart = new Date(Date.now() + 10 * 60 * 1000);
+            var defaultEnd = new Date(defaultStart.getTime() + 30 * 60 * 1000);
+
+            if (startInput && (!startInput.value || new Date(startInput.value) <= now)) {
+                startInput.value = formatDateTimeLocal(defaultStart);
+            }
+            if (endInput && (!endInput.value || new Date(endInput.value) <= new Date(startInput.value))) {
+                endInput.value = formatDateTimeLocal(defaultEnd);
+            }
+        }
+    }
 
     // Sync textarea content to hidden form field before submit
     document.querySelectorAll('.status-form').forEach(function(form) {
-        form.addEventListener('submit', function() {
+        var timezoneInput = form.querySelector('.meeting-timezone-input');
+        if (timezoneInput) {
+            timezoneInput.value = browserTimezone;
+        }
+
+        setMeetingSectionState(form);
+
+        form.addEventListener('submit', function(event) {
             var hiddenInput = form.querySelector('input[name="status_message"]');
             var appId = hiddenInput.id.replace('hidden-msg-', '');
             var textarea = document.getElementById('msg-textarea-' + appId);
             if (textarea) {
                 hiddenInput.value = textarea.value;
+            }
+
+            var selectedRadio = form.querySelector('.status-radio:checked');
+            if (selectedRadio && selectedRadio.value === 'ACCEPTED') {
+                var startInput = form.querySelector('.meeting-start-input');
+                var endInput = form.querySelector('.meeting-end-input');
+                var startValue = startInput ? startInput.value : '';
+                var endValue = endInput ? endInput.value : '';
+
+                if (!startValue || !endValue) {
+                    event.preventDefault();
+                    alert('Please choose a meeting start and end time before accepting the candidate.');
+                    return;
+                }
+
+                if (new Date(endValue) <= new Date(startValue)) {
+                    event.preventDefault();
+                    alert('Meeting end time must be after the start time.');
+                }
             }
         });
     });
@@ -325,6 +449,8 @@ function initApplicationsPage() {
             myLabel.className = myLabel.className.replace(/btn-outline-(info|success|danger)\b/, function(match) {
                 return match.replace('btn-outline-', 'btn-');
             });
+
+            setMeetingSectionState(form);
         });
     });
 
