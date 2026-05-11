@@ -1,0 +1,50 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Conflicts{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+    {% include 'IArooms/timetable/_warning.html.twig' %}
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Room conflicts</h1>
+            <p class="text-muted mb-0">Overlapping bookings in the same room and day.</p>
+        </div>
+        <a href="{{ path('app_timetable_scrape') }}" class="btn btn-primary">Scrape Esprit timetable</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Room</th>
+                        <th>Date</th>
+                        <th>Time</th>
+                        <th>Groups</th>
+                        <th>Courses</th>
+                        <th>Source pages</th>
+                        <th>Description</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for conflict in conflicts %}
+                        <tr>
+                            <td>{{ conflict.room.name }}</td>
+                            <td>{{ conflict.bookingDate ? conflict.bookingDate|date('Y-m-d') : 'N/A' }}</td>
+                            <td>{{ conflict.startTime ? conflict.startTime|date('H:i') : '--:--' }} - {{ conflict.endTime ? conflict.endTime|date('H:i') : '--:--' }}</td>
+                            <td>{{ conflict.bookingAGroupName }}<br>{{ conflict.bookingBGroupName }}</td>
+                            <td>{{ conflict.bookingACourseName }}<br>{{ conflict.bookingBCourseName }}</td>
+                            <td>{{ conflict.bookingASourcePage }}<br>{{ conflict.bookingBSourcePage }}</td>
+                            <td>{{ conflict.description }}</td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="7" class="text-muted">No conflicts detected yet.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

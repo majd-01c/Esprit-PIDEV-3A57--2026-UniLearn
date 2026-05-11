@@ -1,0 +1,19 @@
+{
+  "metadata": {
+    "total_pages_read": 0,
+    "total_bookings_extracted": 0,
+    "total_physical_rooms_found": 0,
+    "ignored_online_sessions": 0
+  },
+  "bookings": [],
+  "rooms": [],
+  "conflicts": [],
+  "extra": {
+    "source": "esprit-website",
+    "source_url": "https://esprit-tn.com/esponline/Online/default.aspx",
+    "warnings": [
+      "Esprit returned the login page after the scrape attempt. The robot checkbox was submitted automatically, but the portal did not issue an authenticated timetable session."
+    ],
+    "student_id": null
+  }
+}

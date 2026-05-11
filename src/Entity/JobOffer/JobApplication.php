@@ -81,6 +81,9 @@ class JobApplication
     #[ORM\Column(type: Types::TEXT, nullable: true)]
     private ?string $statusMessage = null;
 
+    #[ORM\OneToOne(mappedBy: 'application', targetEntity: JobOfferMeeting::class, cascade: ['persist', 'remove'])]
+    private ?JobOfferMeeting $meeting = null;
+
     #[ORM\PrePersist]
     public function onPrePersist(): void
     {
@@ -263,6 +266,26 @@ class JobApplication
     public function setStatusMessage(?string $statusMessage): static
     {
         $this->statusMessage = $statusMessage;
+        return $this;
+    }
+
+    public function getMeeting(): ?JobOfferMeeting
+    {
+        return $this->meeting;
+    }
+
+    public function setMeeting(?JobOfferMeeting $meeting): static
+    {
+        if ($meeting === null && $this->meeting !== null) {
+            $this->meeting->setApplication(null);
+        }
+
+        if ($meeting !== null && $meeting->getApplication() !== $this) {
+            $meeting->setApplication($this);
+        }
+
+        $this->meeting = $meeting;
+
         return $this;
     }
 

@@ -19,28 +19,23 @@
         <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js" defer></script>
         {# Disable HTML5 native validation on every form — server-side validation handles all feedback #}
         <script>
-            document.addEventListener('DOMContentLoaded', function () {
-                document.querySelectorAll('form').forEach(function (f) { f.setAttribute('novalidate', ''); });
-            });
             document.addEventListener('turbo:load', function () {
                 document.querySelectorAll('form').forEach(function (f) { f.setAttribute('novalidate', ''); });
-            });
 
-            // Password visibility toggle — event delegation works across Turbo navigations
-            document.addEventListener('click', function (e) {
-                var btn = e.target.closest('.toggle-password');
-                if (!btn) return;
-                var input = btn.dataset.target
-                    ? document.getElementById(btn.dataset.target)
-                    : btn.closest('.input-group').querySelector('input');
-                if (!input) return;
-                var isPassword = input.type === 'password';
-                input.type = isPassword ? 'text' : 'password';
-                var icon = btn.querySelector('i');
-                if (icon) {
-                    icon.classList.toggle('bi-eye', !isPassword);
-                    icon.classList.toggle('bi-eye-slash', isPassword);
-                }
+                // Password visibility toggle
+                document.querySelectorAll('.toggle-password').forEach(function (btn) {
+                    btn.addEventListener('click', function () {
+                        var input = btn.dataset.target
+                            ? document.getElementById(btn.dataset.target)
+                            : btn.closest('.input-group').querySelector('input');
+                        if (!input) return;
+                        var isPassword = input.type === 'password';
+                        input.type = isPassword ? 'text' : 'password';
+                        var icon = btn.querySelector('i');
+                        icon.classList.toggle('bi-eye', !isPassword);
+                        icon.classList.toggle('bi-eye-slash', isPassword);
+                    });
+                });
             });
         </script>
         {% block stylesheets %}{% endblock %}
@@ -99,6 +94,9 @@
                 </a>
                 <a class="sidebar-link {% if 'job' in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_job_offer_index') }}">
                     <i class="bi bi-briefcase-fill"></i><span>{{ 'nav.job_offers'|trans }}</span>
+                </a>
+                <a class="sidebar-link {% if 'app_availability_' in app.request.attributes.get('_route') or 'app_timetable_' in app.request.attributes.get('_route') or 'app_room_' in app.request.attributes.get('_route') or 'app_conflict_' in app.request.attributes.get('_route') %}active{% endif %}" href="{{ path('app_availability_index') }}">
+                    <i class="bi bi-door-open-fill"></i><span>availblety rooms</span>
                 </a>
                 
                 {% if is_granted('ROLE_STUDENT') and not is_granted('ROLE_ADMIN') and not is_granted('ROLE_TEACHER') and not is_granted('ROLE_TRAINER') and not is_granted('ROLE_BUSINESS_PARTNER') %}
@@ -231,6 +229,7 @@
                     <a href="{{ path('app_home') }}" class="fo-nav-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}">{{ 'nav.home'|trans }}</a>
                     <a href="{{ path('app_event') }}" class="fo-nav-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.events'|trans }}</a>
                     <a href="{{ path('app_job_offer_index') }}" class="fo-nav-link {% if 'job' in app.request.attributes.get('_route') and 'partner' not in app.request.attributes.get('_route') and 'admin' not in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.jobs'|trans }}</a>
+                    <a href="{{ path('app_availability_index') }}" class="fo-nav-link {% if 'app_availability_' in app.request.attributes.get('_route') or 'app_timetable_' in app.request.attributes.get('_route') or 'app_room_' in app.request.attributes.get('_route') or 'app_conflict_' in app.request.attributes.get('_route') %}active{% endif %}">availblety rooms</a>
                     <a href="{{ path('app_forum') }}" class="fo-nav-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}">{{ 'nav.forum'|trans }}</a>
 
                     {% if is_granted('ROLE_STUDENT') %}
@@ -331,6 +330,7 @@
                 <a href="{{ path('app_home') }}" class="fo-mobile-link {% if app.request.attributes.get('_route') == 'app_home' %}active{% endif %}"><i class="bi bi-house-door"></i> {{ 'nav.home'|trans }}</a>
                 <a href="{{ path('app_event') }}" class="fo-mobile-link {% if 'event' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-calendar2-event"></i> {{ 'nav.events'|trans }}</a>
                 <a href="{{ path('app_job_offer_index') }}" class="fo-mobile-link {% if 'job' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-briefcase"></i> {{ 'nav.job_offers'|trans }}</a>
+                <a href="{{ path('app_availability_index') }}" class="fo-mobile-link {% if 'app_availability_' in app.request.attributes.get('_route') or 'app_timetable_' in app.request.attributes.get('_route') or 'app_room_' in app.request.attributes.get('_route') or 'app_conflict_' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-door-open"></i> availblety rooms</a>
                 <a href="{{ path('app_forum') }}" class="fo-mobile-link {% if 'forum' in app.request.attributes.get('_route') %}active{% endif %}"><i class="bi bi-chat-square-dots"></i> {{ 'nav.forum'|trans }}</a>
                 {% if is_granted('ROLE_STUDENT') %}
                 <div class="fo-mobile-divider"></div>
@@ -509,6 +509,7 @@
                     cleanupFns.push(function() { window.removeEventListener('scroll', onScroll); });
                 }
 
+                // Auto-dismiss only flash message alerts (dismissible ones), not inline status alerts
                 // Auto-dismiss flash message alerts only (not all .alert elements)
                 document.querySelectorAll('.alert.alert-dismissible').forEach(function(el) {
                     setTimeout(function() {

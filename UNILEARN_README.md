@@ -230,3 +230,96 @@ See [FORUM_IMPROVEMENTS.md](FORUM_IMPROVEMENTS.md) for detailed documentation.
 ### Check if Database is Synced with Entities 
 php bin/console doctrine:schema:validate
 
+# Classroom Availability Finder
+
+Classroom Availability Finder is a Symfony 6.4 MVC web application for uploading university timetable PDFs, extracting room bookings, detecting conflicts, and checking room availability by date and time.
+
+## Tech Stack
+
+- Symfony 6.4
+- Twig
+- Bootstrap 5
+- Doctrine ORM
+- MySQL
+- `smalot/pdfparser` for text-based PDF extraction
+
+## Important note
+
+The parser is built for selectable-text PDFs first. If a timetable is scanned or rasterized, OCR will be needed later.
+
+## Install
+
+1. Configure your database in `.env` or `.env.local`.
+
+```dotenv
+DATABASE_URL="mysql://app:password@127.0.0.1:3306/classroom_availability_finder?serverVersion=8.0.32&charset=utf8mb4"
+```
+
+2. Install PHP dependencies.
+
+```bash
+composer install
+```
+
+If you are starting from a fresh Symfony skeleton, the feature depends on these packages:
+
+```bash
+composer require doctrine/doctrine-migrations-bundle doctrine/orm smalot/pdfparser symfony/form symfony/twig-bundle symfony/validator
+```
+
+3. Create the database and run migrations.
+
+```bash
+php bin/console doctrine:database:create
+php bin/console doctrine:migrations:migrate
+```
+
+4. Start the application.
+
+```bash
+symfony serve
+```
+
+## Main routes
+
+- `/timetable/upload` Upload a timetable PDF
+- `/timetable/{id}` Timetable details
+- `/availability` Search availability
+- `/availability/results` Availability results
+- `/availability/day/{date}` Day view
+- `/rooms` Room list
+- `/rooms/{id}` Room details
+- `/conflicts` Conflict list
+
+## Composer commands used by this feature
+
+The repository already includes the required packages in `composer.json`, so no new package install is necessary for this code drop. If you need to rebuild dependencies on a new machine, run `composer install` first.
+
+## How the parser works
+
+1. Each PDF page is read page by page.
+2. The parser looks for `Emploi du Temps` to infer the group name.
+3. It detects the week range, such as `26/04/2026 - 02/05/2026`.
+4. It scans day labels like `Lundi 27/04` and extracts course, room, and time blocks.
+5. It ignores rooms marked `En ligne`.
+6. If a room field contains multiple rooms separated by commas, each room is stored as a separate booking.
+
+If extraction is uncertain, the source page is preserved for debugging in the stored booking records.
+
+## Testing with a timetable PDF
+
+1. Go to `/timetable/upload`.
+2. Upload a selectable-text timetable PDF.
+3. Open the saved timetable details page.
+4. Use `/availability` to pick a date and time slot.
+5. Use `/availability/day/{date}` to inspect the standard teaching slots.
+6. Check `/rooms` for the detected room universe.
+7. Check `/conflicts` for overlapping room bookings.
+
+## Results warning
+
+The app always shows this warning in the classroom finder pages:
+
+> Results are based only on rooms detected in the uploaded PDF unless a master room list is provided.
+
+

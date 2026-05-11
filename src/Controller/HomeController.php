@@ -13,13 +13,9 @@ use Symfony\Component\Routing\Attribute\Route;
 class HomeController extends AbstractController
 {
     #[Route('/', name: 'app_home')]
-    public function index(
-        UserRepository $userRepository,
-        ProgramRepository $programRepository,
-        ClasseRepository $classeRepository,
-        ReclamationRepository $reclamationRepository
-    ): Response {
-        // If user is logged in, render their dashboard
+    public function index(UserRepository $userRepository, ProgramRepository $programRepository, ClasseRepository $classeRepository, ReclamationRepository $reclamationRepository): Response
+    {
+        // If user is logged in, redirect to their dashboard
         if ($this->getUser()) {
             $vars = [];
             if ($this->isGranted('ROLE_ADMIN')) {

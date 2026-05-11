@@ -4,6 +4,8 @@ namespace App\Controller;
 
 use App\Entity\JobApplication;
 use App\Entity\JobOffer;
+use App\Entity\JobOfferMeeting;
+use App\Entity\User;
 use App\Enum\JobApplicationStatus;
 use App\Enum\JobOfferStatus;
 use App\Enum\JobOfferType;
@@ -13,8 +15,12 @@ use App\Repository\JobOfferRepository;
 use App\Security\Voter\JobOfferVoter;
 use App\Service\JobOffer\ATSScoringService;
 use App\Service\JobOffer\JobApplicationService;
+use App\Service\JobOffer\JobOfferMeetingService;
 use App\Service\JobOffer\JobOfferService;
+use App\Service\JobOffer\MotivationLetterService;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -30,7 +36,10 @@ class JobOfferController extends AbstractController
         private readonly JobOfferRepository $jobOfferRepository,
         private readonly JobOfferService $jobOfferService,
         private readonly JobApplicationService $applicationService,
+        private readonly JobOfferMeetingService $meetingService,
         private readonly ATSScoringService $scoringService,
+        private readonly MotivationLetterService $motivationLetterService,
+        private readonly EntityManagerInterface $entityManager,
     ) {
     }
 
@@ -55,9 +64,19 @@ class JobOfferController extends AbstractController
             $typeEnum = JobOfferType::from($type);
         }
 
-        // Search only ACTIVE offers with pagination
+        // For students: exclude offers they already applied to
+        $excludeOfferIds = [];
+        $appliedCount = 0;
+        if ($this->isGranted('ROLE_STUDENT')) {
+            /** @var \App\Entity\User $user */
+            $user = $this->getUser();
+            $excludeOfferIds = $this->jobOfferRepository->getAppliedOfferIds($user);
+            $appliedCount = count($excludeOfferIds);
+        }
+
+        // Search only ACTIVE offers with pagination (excluding applied ones for students)
         $paginator = $this->jobOfferRepository->searchPaginated(
-            $q, $typeEnum, $location, JobOfferStatus::ACTIVE, $page, $limit
+            $q, $typeEnum, $location, JobOfferStatus::ACTIVE, $page, $limit, $excludeOfferIds
         );
 
         $totalItems = count($paginator);
@@ -72,6 +91,7 @@ class JobOfferController extends AbstractController
             'currentType' => $type,
             'currentLocation' => $location,
             'jobOfferTypes' => JobOfferType::cases(),
+            'appliedCount' => $appliedCount,
         ]);
     }
 
@@ -160,6 +180,59 @@ class JobOfferController extends AbstractController
         return $this->render('Gestion_Job_Offre/student/applications.html.twig', [
             'applications' => $applications,
         ]);
+    }
+
+    /**
+     * Generate AI improvement advice for a student's application (AJAX)
+     */
+    #[Route('/my-applications/{id}/ai-advice', name: 'app_student_application_ai_advice', methods: ['POST'])]
+    #[IsGranted('ROLE_STUDENT')]
+    public function generateApplicationAdvice(JobApplication $application): JsonResponse
+    {
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        // Ensure the student owns this application
+        if ($application->getStudent() !== $user) {
+            return $this->json(['success' => false, 'error' => 'Access denied.'], 403);
+        }
+
+        // Only allow advice for applications that have a decision
+        if (!$application->hasDecision()) {
+            return $this->json(['success' => false, 'error' => 'Advice is only available for reviewed applications.'], 400);
+        }
+
+        try {
+            $advice = $this->motivationLetterService->generateImprovementAdvice($application);
+            return $this->json(['success' => true, 'advice' => $advice]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate a motivation letter using AI based on student profile & job offer (AJAX)
+     */
+    #[Route('/job-offers/{id}/generate-motivation', name: 'app_job_offer_generate_motivation', methods: ['POST'])]
+    #[IsGranted('ROLE_STUDENT')]
+    public function generateMotivationLetter(JobOffer $offer): JsonResponse
+    {
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        try {
+            $letter = $this->motivationLetterService->generate($user, $offer);
+
+            return $this->json([
+                'success' => true,
+                'letter' => $letter,
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     // === PARTNER ROUTES ===
@@ -418,16 +491,105 @@ class JobOfferController extends AbstractController
             return $this->redirectToApplicationsList($application);
         }
 
-        // Update application status
         try {
-            $this->applicationService->updateStatus($application, $newStatus);
+            $meetingWindow = null;
+            if ($newStatus === JobApplicationStatus::ACCEPTED) {
+                $meetingWindow = $this->parseMeetingWindow($request);
+            }
+
+            $customMessage = $request->request->get('status_message');
+            $this->applicationService->updateStatus($application, $newStatus, $customMessage, false);
+
+            if ($newStatus === JobApplicationStatus::ACCEPTED && $meetingWindow !== null) {
+                /** @var User $reviewer */
+                $reviewer = $this->getUser();
+                $meeting = $this->meetingService->scheduleMeetingForPartner(
+                    $application,
+                    null,
+                    $this->buildMeetingDescription($application),
+                    $meetingWindow['start'],
+                    $meetingWindow['end'],
+                    $reviewer,
+                    false,
+                );
+            } else {
+                $this->meetingService->cancelForApplication($application, false);
+                $meeting = null;
+            }
+
+            $this->entityManager->flush();
+
             $statusLabel = ucfirst(strtolower($newStatus->value));
-            $this->addFlash('success', sprintf('Application status updated to %s successfully!', $statusLabel));
+            $message = sprintf('Application status updated to %s successfully!', $statusLabel);
+            if (isset($meeting) && $meeting instanceof JobOfferMeeting) {
+                $message .= sprintf(
+                    ' Interview scheduled from %s to %s.',
+                    $meeting->getScheduledAt()?->format('M d, Y H:i'),
+                    $meeting->getScheduledEndAt()?->format('H:i'),
+                );
+            }
+            $this->addFlash('success', $message);
         } catch (\Exception $e) {
             $this->addFlash('error', 'Error updating application status: ' . $e->getMessage());
         }
 
         return $this->redirectToApplicationsList($application);
+    }
+
+    #[Route('/partner/job-offer-meetings/{id}/join', name: 'app_partner_job_offer_meeting_join', methods: ['GET'])]
+    #[IsGranted('ROLE_BUSINESS_PARTNER')]
+    public function joinPartnerMeeting(JobOfferMeeting $meeting): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        try {
+            $meeting = $this->meetingService->joinPartnerMeeting($meeting, $user);
+        } catch (\Exception $e) {
+            $this->addFlash('error', $e->getMessage());
+            return $this->redirectToApplicationsList($meeting->getApplication());
+        }
+
+        return $this->renderJobOfferMeetingRoom($meeting, $user, true);
+    }
+
+    #[Route('/partner/job-offer-meetings/{id}/end', name: 'app_partner_job_offer_meeting_end', methods: ['POST'])]
+    #[IsGranted('ROLE_BUSINESS_PARTNER')]
+    public function endPartnerMeeting(Request $request, JobOfferMeeting $meeting): Response
+    {
+        if (!$this->isCsrfTokenValid('end_job_offer_meeting' . $meeting->getId(), $request->request->get('_token'))) {
+            $this->addFlash('error', 'Invalid CSRF token.');
+            return $this->redirectToApplicationsList($meeting->getApplication());
+        }
+
+        /** @var User $user */
+        $user = $this->getUser();
+
+        try {
+            $this->meetingService->endMeeting($meeting, $user);
+            $this->addFlash('success', 'Meeting ended successfully.');
+        } catch (\Exception $e) {
+            $this->addFlash('error', $e->getMessage());
+        }
+
+        return $this->redirectToApplicationsList($meeting->getApplication());
+    }
+
+    #[Route('/my-applications/meetings/{id}/join', name: 'app_student_job_offer_meeting_join', methods: ['GET'])]
+    #[IsGranted('ROLE_STUDENT')]
+    public function joinStudentMeeting(JobOfferMeeting $meeting): Response
+    {
+        /** @var User $user */
+        $user = $this->getUser();
+
+        try {
+            $meeting = $this->meetingService->joinStudentMeeting($meeting, $user);
+        } catch (\Exception $e) {
+            $this->addFlash('error', $e->getMessage());
+            return $this->redirectToRoute('app_student_job_applications');
+        }
+
+        return $this->renderJobOfferMeetingRoom($meeting, $user, false);
     }
 
     /**
@@ -459,6 +621,28 @@ class JobOfferController extends AbstractController
     }
 
     /**
+     * Generate AI status message for a candidate (AJAX)
+     */
+    #[Route('/partner/job-applications/{id}/generate-message', name: 'app_partner_job_application_generate_message', methods: ['POST'])]
+    #[IsGranted('ROLE_BUSINESS_PARTNER')]
+    public function generateApplicationMessage(Request $request, JobApplication $application): JsonResponse
+    {
+        $this->denyAccessUnlessGranted(JobOfferVoter::VIEW_APPLICATIONS, $application->getOffer());
+
+        $decision = $request->request->get('decision', 'REJECTED');
+        if (!in_array($decision, ['ACCEPTED', 'REJECTED'], true)) {
+            return $this->json(['success' => false, 'error' => 'Invalid decision value.'], 400);
+        }
+
+        try {
+            $message = $this->motivationLetterService->generateStatusMessage($application, $decision);
+            return $this->json(['success' => true, 'message' => $message]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * View score details for an application
      */
     #[Route('/partner/job-applications/{id}/score-details', name: 'app_partner_job_application_score_details', methods: ['GET'])]
@@ -481,6 +665,77 @@ class JobOfferController extends AbstractController
     {
         return $this->redirectToRoute('app_partner_job_offer_applications', [
             'id' => $application->getOffer()->getId(),
+        ]);
+    }
+
+    /** @return array{start: \DateTimeImmutable, end: \DateTimeImmutable} */
+    private function parseMeetingWindow(Request $request): array
+    {
+        $startInput = trim((string) $request->request->get('meeting_start_at', ''));
+        $endInput = trim((string) $request->request->get('meeting_end_at', ''));
+        $timezoneInput = trim((string) $request->request->get('meeting_timezone', ''));
+
+        if ($startInput === '' || $endInput === '') {
+            throw new \InvalidArgumentException('Choose a meeting start and end time before accepting the candidate.');
+        }
+
+        try {
+            $start = $this->parseBrowserDateTimeLocal($startInput, $timezoneInput);
+            $end = $this->parseBrowserDateTimeLocal($endInput, $timezoneInput);
+        } catch (\Exception) {
+            throw new \InvalidArgumentException('Meeting date and time are invalid.');
+        }
+
+        if ($end <= $start) {
+            throw new \InvalidArgumentException('Meeting end time must be after the start time.');
+        }
+
+        return ['start' => $start, 'end' => $end];
+    }
+
+    private function parseBrowserDateTimeLocal(string $value, string $timezone): \DateTimeImmutable
+    {
+        $browserTimezone = $this->resolveBrowserTimezone($timezone);
+        $dateTime = \DateTimeImmutable::createFromFormat('!Y-m-d\TH:i', $value, $browserTimezone);
+        $errors = \DateTimeImmutable::getLastErrors();
+
+        if (!$dateTime instanceof \DateTimeImmutable || ($errors !== false && ($errors['warning_count'] > 0 || $errors['error_count'] > 0))) {
+            throw new \InvalidArgumentException('Meeting date and time are invalid.');
+        }
+
+        return $dateTime;
+    }
+
+    private function resolveBrowserTimezone(string $timezone): \DateTimeZone
+    {
+        if ($timezone !== '') {
+            try {
+                return new \DateTimeZone($timezone);
+            } catch (\Exception) {
+            }
+        }
+
+        return new \DateTimeZone(date_default_timezone_get());
+    }
+
+    private function buildMeetingDescription(JobApplication $application): string
+    {
+        $candidate = $application->getStudent()?->getName()
+            ?: $application->getStudent()?->getEmail()
+            ?: 'candidate';
+        $offerTitle = $application->getOffer()?->getTitle() ?: 'this job offer';
+
+        return sprintf('Interview meeting for %s about %s.', $candidate, $offerTitle);
+    }
+
+    private function renderJobOfferMeetingRoom(JobOfferMeeting $meeting, User $user, bool $isPartner): Response
+    {
+        return $this->render('Gestion_Job_Offre/job_offer/meeting_room.html.twig', [
+            'meeting' => $meeting,
+            'application' => $meeting->getApplication(),
+            'jitsi_host' => $_ENV['JITSI_HOST'] ?? 'meet.jit.si',
+            'username' => ($user->getName() ?: $user->getEmail()) . ($isPartner ? ' (Partner)' : ' (Candidate)'),
+            'isPartner' => $isPartner,
         ]);
     }
 }

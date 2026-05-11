@@ -1,0 +1,85 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Day availability{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+    {% include 'IArooms/timetable/_warning.html.twig' %}
+
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h1 class="h3 mb-1">Day availability</h1>
+            <p class="text-muted mb-0">{{ day|date('d/m/Y') }} · {{ upload.originalFilename }}</p>
+        </div>
+        <a href="{{ path('app_availability_index') }}" class="btn btn-outline-primary">Back to search</a>
+    </div>
+
+    <div class="card border-0 shadow-sm">
+        <div class="card-body table-responsive">
+            <table class="table align-middle mb-0">
+                <thead>
+                    <tr>
+                        <th>Date</th>
+                        <th>Day</th>
+                        <th>Slot</th>
+                        <th class="text-center">Empty count</th>
+                        <th class="text-center">Occupied count</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for slot in slots %}
+                        <tr>
+                            <td>{{ slot.date }}</td>
+                            <td>{{ slot.dayName }}</td>
+                            <td>{{ slot.slot }}</td>
+                            <td class="text-center"><span class="badge text-bg-success">{{ slot.emptyCount }}</span></td>
+                            <td class="text-center"><span class="badge text-bg-danger">{{ slot.occupiedCount }}</span></td>
+                            <td>
+                                <button class="btn btn-sm btn-outline-secondary" type="button" data-bs-toggle="collapse" data-bs-target="#slot-{{ loop.index }}">Details</button>
+                            </td>
+                        </tr>
+                        <tr class="collapse" id="slot-{{ loop.index }}">
+                            <td colspan="6" class="bg-light">
+                                <div class="p-3">
+                                    <div class="row g-3">
+                                        <div class="col-md-6">
+                                            <div class="fw-semibold text-success mb-2">Empty rooms</div>
+                                            <div class="d-flex flex-wrap gap-2">
+                                                {% for room in slot.emptyRooms %}
+                                                    <span class="badge text-bg-success">{{ room.name }}</span>
+                                                {% else %}
+                                                    <span class="text-muted">No free rooms in this slot.</span>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="fw-semibold text-danger mb-2">Occupied rooms</div>
+                                            <div class="list-group">
+                                                {% for booking in slot.occupiedRooms %}
+                                                    <div class="list-group-item">
+                                                        <div class="d-flex justify-content-between gap-2">
+                                                            <strong>{{ booking.room }}</strong>
+                                                            <span class="badge text-bg-danger">Page {{ booking.sourcePage }}</span>
+                                                        </div>
+                                                        <div class="small text-muted">{{ booking.group }} · {{ booking.course }}</div>
+                                                        <div class="small">{{ booking.startTime }} - {{ booking.endTime }}</div>
+                                                    </div>
+                                                {% else %}
+                                                    <div class="text-muted">No occupied rooms in this slot.</div>
+                                                {% endfor %}
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </td>
+                        </tr>
+                    {% else %}
+                        <tr><td colspan="6" class="text-muted">No slots available.</td></tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+{% endblock %}

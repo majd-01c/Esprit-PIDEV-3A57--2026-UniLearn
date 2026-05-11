@@ -1,0 +1,117 @@
+{% extends 'base.html.twig' %}
+
+{% block title %}Availability search{% endblock %}
+
+{% block body %}
+<div class="container py-4">
+    {% include 'IArooms/timetable/_warning.html.twig' %}
+
+    <div class="row justify-content-center">
+        <div class="col-12 col-xl-10">
+            <div class="card border-0 shadow-sm">
+                <div class="card-body p-4 p-md-5">
+                    <div class="mb-4">
+                        <h1 class="h3 mb-1">Availability search</h1>
+                        <p class="text-muted mb-0">Select an Esprit scrape, date, and time slot to see empty and occupied rooms.</p>
+                    </div>
+
+                    {{ form_start(form, { action: path('app_availability_results'), method: 'GET' }) }}
+                        <div class="row g-3">
+                            <div class="col-md-6">{{ form_row(form.upload) }}</div>
+                            <div class="col-md-3">{{ form_row(form.date) }}</div>
+                            <div class="col-md-3">{{ form_row(form.startTime) }}</div>
+                            <div class="col-md-3">{{ form_row(form.endTime) }}</div>
+                            <div class="col-md-3">{{ form_row(form.roomFilter) }}</div>
+                            <div class="col-md-3">{{ form_row(form.buildingFilter) }}</div>
+                        </div>
+                        <div class="mt-4 d-flex gap-2 flex-wrap">
+                            <button class="btn btn-primary" type="submit"><i class="bi bi-search me-1"></i> Search</button>
+                            <a class="btn btn-outline-primary" href="{{ path('app_timetable_scrape') }}">Scrape Esprit</a>
+                            {% if latestUpload %}
+                                <button
+                                    class="btn btn-outline-danger"
+                                    type="submit"
+                                    form="delete-selected-scrape-form"
+                                    id="delete-selected-scrape-button"
+                                >
+                                    <i class="bi bi-trash me-1"></i> Delete selected
+                                </button>
+                            {% endif %}
+                        </div>
+                    {{ form_end(form) }}
+
+                    {% if latestUpload %}
+                        <form
+                            method="post"
+                            id="delete-selected-scrape-form"
+                            action="{{ path('app_timetable_delete', { id: selectedUploadId ?: latestUpload.id }) }}"
+                            data-action-template="{{ path('app_timetable_delete', { id: '__ID__' }) }}"
+                            data-select-id="{{ form.upload.vars.id }}"
+                        >
+                            <input type="hidden" name="_token" value="{{ csrf_token('delete_timetable') }}">
+                        </form>
+                    {% endif %}
+
+                    <hr class="my-4">
+                    <div class="mb-2 fw-semibold">Predefined slots</div>
+                    <div class="d-flex flex-wrap gap-2">
+                        {% for slot in presetSlots %}
+                            <a class="btn btn-sm btn-outline-primary"
+                               href="{{ path('app_availability_results', {
+                                   upload: selectedUploadId,
+                                   date: selectedDate,
+                                   startTime: slot.start,
+                                   endTime: slot.end
+                               }) }}">{{ slot.label }}</a>
+                        {% endfor %}
+                    </div>
+                    {% if latestUpload is null %}
+                        <div class="alert alert-info mt-4 mb-0">Scrape the Esprit timetable first to make availability searches meaningful.</div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block javascripts %}
+    {{ parent() }}
+    {% if latestUpload %}
+        <script>
+            document.addEventListener('DOMContentLoaded', function () {
+                var deleteForm = document.getElementById('delete-selected-scrape-form');
+                var deleteButton = document.getElementById('delete-selected-scrape-button');
+                if (!deleteForm || !deleteButton) {
+                    return;
+                }
+
+                var uploadSelect = document.getElementById(deleteForm.dataset.selectId);
+                var actionTemplate = deleteForm.dataset.actionTemplate;
+                var syncDeleteAction = function () {
+                    var selectedId = uploadSelect ? uploadSelect.value : '';
+                    deleteButton.disabled = selectedId === '';
+                    if (selectedId !== '') {
+                        deleteForm.action = actionTemplate.replace('__ID__', selectedId);
+                    }
+                };
+
+                syncDeleteAction();
+                if (uploadSelect) {
+                    uploadSelect.addEventListener('change', syncDeleteAction);
+                }
+
+                deleteForm.addEventListener('submit', function (event) {
+                    syncDeleteAction();
+                    var selectedLabel = uploadSelect && uploadSelect.selectedOptions.length > 0
+                        ? uploadSelect.selectedOptions[0].textContent.trim()
+                        : 'this Esprit scrape';
+
+                    if (!window.confirm('Delete ' + selectedLabel + ' and all its bookings?')) {
+                        event.preventDefault();
+                    }
+                });
+            });
+        </script>
+    {% endif %}
+{% endblock %}
