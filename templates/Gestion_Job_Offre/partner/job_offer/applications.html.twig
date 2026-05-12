@@ -167,7 +167,7 @@
                                     {# CV Download #}
                                     <td>
                                         {% if application.cvFileName %}
-                                            <a href="{{ vich_uploader_asset(application, 'cvFile') }}" 
+                                            <a href="{{ path('app_partner_job_application_download_cv', {id: application.id}) }}" 
                                                target="_blank" 
                                                class="btn btn-sm btn-outline-primary"
                                                download>

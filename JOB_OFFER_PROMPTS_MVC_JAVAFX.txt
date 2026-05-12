@@ -1,0 +1,668 @@
+JOB OFFER MIGRATION PROMPT PACK (JAVAFX + JAVA MVC + MAVEN)
+Version: Team-Integration Safe
+Date: 2026-04-13
+
+IMPORTANT CONTEXT (FIXED BY USER)
+- Build tool: Maven
+- Database strategy: Use same database as current app (future linkage between both apps)
+- Authentication: handled by teammate, do NOT rebuild auth
+- Integration rule: reuse existing dashboards/screens/navigation; do NOT create duplicate dashboard pages
+- Scope owner: Job Offer module only
+- Package naming rule: ALL files go ONLY in job_offer package/module (or jobOffer/job-offer if that matches project convention)
+  Examples: com.app.jobOffer.entity, com.app.job_offer.service, src.jobOffer.controller
+  NEVER create files outside this package. Do NOT add files to unrelated packages.
+
+PHASE 2 NOTE
+- AI provider for later phase: Gemini
+- ATS / AI assistant / CV parsing belong only to phase 2 and must not be used in phase 1.
+
+HOW TO USE THIS FILE
+1) Always run Prompt 00 first in a new AI session.
+2) Then run exactly ONE prompt at a time.
+3) After each prompt, compile + run tests before moving to next.
+4) If AI starts creating extra screens/dashboards, run the guard prompt at the end of this file.
+
+PHASE 1 NOW — CORE JOB OFFER BASE
+1) Build only the simple Job Offer base.
+2) Create offer, submit offer, manage offer, list offer, and role checks.
+3) Do NOT add ATS, AI, Gemini, CV parsing, assistant, or external API logic yet.
+4) Do NOT add extra modules or screens outside Job Offer.
+5) Keep controllers and services small, clean, and easy to extend later.
+6) If a feature depends on ATS or AI, mark it as phase 2 and skip it now.
+
+PHASE 2 LATER — ATS / AI / ASSISTANT
+1) ATS scoring and AI assistant features are later-phase only.
+2) Gemini, CV parsing, generated messages, and recommendation features stay out of phase 1.
+3) Run only the prompts marked as later-phase when the base module is stable.
+
+====================================================================
+PROMPT 00 — GLOBAL CONTEXT + HARD RULES (RUN IN EVERY SESSION)
+====================================================================
+You are helping me implement ONLY the Job Offer module in an EXISTING Java desktop app.
+Tech stack and constraints:
+- Frontend: JavaFX
+- Backend/business: Java
+- Architecture: MVC
+- Build: Maven
+- Authentication is already implemented by another teammate, do not touch authentication.
+- I am integrating into an existing application with existing navigation and dashboard(s).
+Hard rules:
+1) Reuse existing UI flow and dashboards. Do NOT create duplicate dashboard screens.
+2) If partner/admin/student home screens already exist, extend them with Job Offer entries/components only.
+3) Keep changes modular and low-risk for other teammates.
+4) Keep package naming and coding style consistent with existing project.
+5) CRITICAL: ALL new files MUST be created ONLY inside the job_offer package family. Examples:
+   - Entity class → src.com.app.jobOffer.entity.JobOffer
+   - Service class → src.com.app.jobOffer.service.JobOfferService
+   - Controller → src.com.app.jobOffer.controller.JobOfferController
+   - Repository → src.com.app.jobOffer.repository.JobOfferRepository
+   - View/FXML → resources.jobOffer.view.JobOfferList.fxml
+   - DTO → src.com.app.jobOffer.dto.JobOfferDTO
+   DO NOT create files anywhere else. Do NOT add subpackages outside jobOffer.
+6) Avoid changing unrelated modules.
+7) For this phase, do NOT implement ATS, AI, Gemini, CV parsing, or any external API integration.
+8) For this phase, keep controllers and services limited to basic Job Offer CRUD, filters, status workflow, and access checks.
+9) Preserve these business rules from legacy module:
+   - JobOfferType: INTERNSHIP, APPRENTICESHIP, JOB
+   - JobOfferStatus: PENDING, ACTIVE, REJECTED, CLOSED
+   - JobApplicationStatus: SUBMITTED, REVIEWED, ACCEPTED, REJECTED
+   - One student cannot apply twice to same offer
+   - Student can apply only when offer status is ACTIVE
+   - Partner can manage only their own offers
+   - Admin can approve/reject/unreject/delete any offer
+   - Reopen closed offer sets it back to PENDING
+  - ATS scoring must preserve weighted logic (phase 2 only)
+  - AI features: motivation letter, candidate decision message, improvement advice (phase 2 only)
+Output format required:
+A) What was implemented
+B) Files created/modified
+C) How it integrates with existing screens
+D) Manual test checklist
+E) Risks/TODO
+F) Next small task
+
+====================================================================
+PROMPT 01 — CODEBASE SCAN + INTEGRATION PLAN (NO CODING YET)
+====================================================================
+Scan the existing Java project and produce an integration plan for adding Job Offer module with minimal disruption.
+Requirements:
+1) Detect existing role dashboards and navigation entry points.
+2) Detect existing package conventions and architectural patterns.
+3) Identify where to inject Job Offer menu/actions for Partner/Admin/Student without new dashboards.
+4) Identify existing shared components to reuse (table views, forms, dialogs, pagination, notifications).
+5) Propose exact package/file map for Job Offer implementation.
+Deliver:
+- Integration map
+- Existing files to extend
+- New files to add
+- Dependency impact summary
+Do not generate business logic code yet.
+
+====================================================================
+PROMPT 02 — SCAFFOLD JOB OFFER MODULE STRUCTURE (MAVEN + MVC)
+====================================================================
+Create only the structural skeleton for the Job Offer module inside existing architecture.
+CRITICAL: All packages MUST be created inside the jobOffer package. Example structure:
+  src/main/java/com/app/jobOffer/
+    ├── entity/           # Domain models and enums
+    ├── repository/       # Persistence interfaces
+    ├── service/          # Business logic services
+    ├── controller/       # JavaFX controllers and routers
+    ├── dto/              # Data transfer objects
+    ├── mapper/           # DTO mappers
+    └── utils/            # Shared utilities (validators, converters)
+  src/main/resources/jobOffer/
+    └── view/             # FXML files
+Requirements:
+1) Create ONLY the package folders listed above under jobOffer. Do NOT create files outside jobOffer package.
+2) Add interface-first design for services/repositories.
+3) Respect current project naming and module conventions.
+4) Do not add duplicate dashboards.
+5) Ensure Maven module/dependency config remains compatible with current project.
+6) Set up placeholder package-info.java files in each package for documentation.
+7) Do NOT create ai/ats packages yet in this phase. Reserve them for phase 2 only.
+Deliver:
+- Created package tree (inside jobOffer only)
+- Interface skeleton list (no implementations yet)
+- Controller stub list (methods named but not implemented)
+- Resource folder structure for FXML files
+No heavy implementation yet.
+
+====================================================================
+PROMPT 03 — DOMAIN MODELS + ENUMS
+====================================================================
+Implement Job Offer domain models and enums with validation and invariants.
+Required entities:
+1) JobOffer
+2) JobApplication
+3) CustomSkill (only if needed later for advanced matching; skip in current phase)
+Required enums:
+- JobOfferType, JobOfferStatus, JobApplicationStatus
+Fields to include from legacy behavior:
+- JobOffer: title, type, location, latitude, longitude, description, requirements, requiredSkills, preferredSkills,
+  minExperienceYears, minEducation, requiredLanguages, status, createdAt, updatedAt, publishedAt, expiresAt, partnerId
+- JobApplication: offerId, studentId, message, cvFileName, status, createdAt, updatedAt, score, scoreBreakdown,
+  scoredAt, extractedData, statusNotified, statusNotifiedAt, statusMessage
+Rules:
+- hasDecision(), needsStatusNotification() helpers
+- unique application per student per offer
+Deliver:
+- Model classes
+- Enum classes
+- Validation notes
+
+====================================================================
+PROMPT 04 — DB MAPPING + REPOSITORY CONTRACTS (SAME DATABASE)
+====================================================================
+Design and implement persistence mappings/repository contracts for Job Offer module using same database strategy as existing app.
+Requirements:
+1) Add/align schema mappings without breaking existing tables.
+2) Add indexes for common filters (status/type/location/date).
+3) Add unique constraint for (offer_id, student_id) applications.
+4) Repository contracts must support:
+   - Public offer search with pagination and filters
+   - Admin offer search with pagination and filters
+   - Partner own offers pagination
+   - hasStudentApplied
+   - getAppliedOfferIds
+   - custom skills CRUD/search by partner
+5) Do not add ATS tables or AI-related columns in this phase.
+Deliver:
+- Mapping files/entities updates
+- Repository interfaces + implementations
+- Migration notes
+
+====================================================================
+PROMPT 05 — JOBOFFERSERVICE BUSINESS RULES
+====================================================================
+Implement JobOfferService with business rules and tests.
+Methods:
+- createForPartner
+- update
+- changeStatus
+- delete
+- getPartnerOffersPaginated
+Rules:
+1) createForPartner sets partner and PENDING
+2) ACTIVE transition sets publishedAt if null
+3) reopening closed offer should route to PENDING
+4) No unauthorized ownership changes
+5) Keep this service limited to core Job Offer workflow only; do not add ATS or AI calls.
+Deliver:
+- Service implementation
+- Unit tests for all transitions and edge cases
+
+====================================================================
+PROMPT 06 — JOBAPPLICATIONSERVICE BUSINESS RULES
+====================================================================
+Implement JobApplicationService with full behavior and tests.
+Methods:
+- hasAlreadyApplied
+- apply
+- updateStatus
+- markStatusAsNotified
+- getApplicationsForOffer
+- getApplicationsForStudent
+Rules:
+1) apply allowed only when offer status is ACTIVE
+2) prevent duplicate application by same student
+3) updateStatus supports optional custom message
+4) when status changes to ACCEPTED/REJECTED, set notification flags accordingly
+Deliver:
+- Service implementation
+- Unit tests + clear exception messages
+
+====================================================================
+PROMPT 07 — LATER PHASE ONLY: ATS SCORING SERVICE
+====================================================================
+Do NOT run this prompt in the current phase.
+This is reserved for later when the core Job Offer module is stable.
+Future scope:
+1) Implement ATS scoring with weighted categories.
+2) Score single application and all applications for an offer.
+3) Persist total score + breakdown + scoredAt + extractedData.
+4) Provide deterministic tests for score math.
+If ATS is not required yet, skip this prompt entirely.
+
+====================================================================
+PROMPT 08 — LATER PHASE ONLY: CV PARSER + GEMINI EXTRACTION
+====================================================================
+Do NOT run this prompt in the current phase.
+This is reserved for later when API integration is allowed.
+Future scope:
+1) CV parser service for PDF text extraction.
+2) Gemini client wrapper with retries/fallback and safe errors.
+3) Config-based API key loading.
+4) No secret logging.
+5) Test doubles/mocks for offline tests.
+If external APIs are not allowed yet, skip this prompt entirely.
+
+====================================================================
+PROMPT 09 — LATER PHASE ONLY: MOTIVATION + AI MESSAGES
+====================================================================
+Do NOT run this prompt in the current phase.
+This is reserved for later when AI features are explicitly approved.
+Future scope:
+1) Student motivation letter generation.
+2) Partner decision message generation.
+3) Student improvement advice after decision.
+4) Prompt templates, retry/fallback, and tests.
+If AI is not needed yet, skip this prompt entirely.
+
+====================================================================
+PROMPT 10 — INTEGRATE INTO EXISTING DASHBOARDS/NAVIGATION (NO NEW DASHBOARD)
+====================================================================
+Integrate Job Offer entry points into current app navigation.
+Rules:
+1) Reuse existing Partner/Admin/Student dashboards.
+2) Add only Job Offer links/cards/menu entries to existing dashboard files.
+3) Keep styling and UX consistent with current app.
+4) Only add navigation to core Job Offer screens that are already implemented in this phase.
+Deliver:
+- Files changed in existing dashboard/navigation
+- Mapping from role -> Job Offer screens
+- Screenshots or run notes
+
+====================================================================
+PROMPT 11 — STUDENT UI FLOW (JAVAFX)
+====================================================================
+Implement Student/Public JavaFX screens and controllers:
+1) Offer list (filters + pagination)
+2) Offer details
+3) Apply (message + CV upload)
+4) My applications timeline/status
+5) AI buttons for motivation letter and improvement advice
+Requirements:
+- Reuse existing JavaFX components/styles
+- Handle loading/error states cleanly
+- Respect role restrictions
+Deliver:
+- FXML/controller/service wiring
+- Manual test checklist
+
+====================================================================
+PROMPT 12 — PARTNER UI FLOW (JAVAFX)
+====================================================================
+Implement Partner screens/controllers integrated into existing partner area:
+1) My offers list
+2) New/edit offer form (ATS criteria included)
+3) Offer actions: close/reopen/delete
+4) Applications management for one offer
+5) Score details + score calculation actions
+6) Status update and AI-generated message
+Requirements:
+- Do not create separate partner dashboard
+- Reuse existing partner layout shell
+Deliver:
+- Files changed + role guard checks
+- Manual test checklist
+
+====================================================================
+PROMPT 13 — ADMIN UI FLOW (JAVAFX)
+====================================================================
+Implement Admin moderation screens/controllers integrated into existing admin area:
+1) Offer list with filters
+2) Offer detail/review
+3) Actions: approve/reject/unreject/delete
+Requirements:
+- Status-dependent action visibility
+- Clear confirmation dialogs
+- Audit-friendly logs
+Deliver:
+- Files changed
+- Test checklist
+
+====================================================================
+PROMPT 14 — AUTHORIZATION BOUNDARIES (AUTH MODULE ALREADY EXISTS)
+====================================================================
+Integrate with existing authentication/authorization layer without rebuilding auth.
+Requirements:
+1) Enforce ownership checks for partner operations
+2) Enforce admin-only moderation actions
+3) Enforce student-only application actions
+4) Standardize unauthorized error handling in UI and service layers
+Deliver:
+- Security matrix (action x role)
+- Tests for unauthorized attempts
+
+====================================================================
+PROMPT 15 — END-TO-END JOB OFFER WORKFLOW TESTS
+====================================================================
+Create end-to-end workflow tests for:
+1) Partner creates offer (PENDING)
+2) Admin approves (ACTIVE)
+3) Student can see and apply
+4) Partner reviews and updates application status
+5) ATS scoring operations (single + bulk)
+6) Student notification/advice behavior
+Deliver:
+- Automated scenarios
+- Manual fallback test script
+
+====================================================================
+PROMPT 16 — TEAM INTEGRATION HANDOVER
+====================================================================
+Prepare handover docs for teammates:
+1) Public interfaces/contracts for Job Offer module
+2) Data model and DTO mapping summary
+3) Integration points with existing app modules
+4) Known assumptions and extension points
+5) Backward compatibility notes for shared database
+Deliver:
+- Concise integration document
+- Risk list
+- Future improvements
+
+====================================================================
+ANTI-DRIFT GUARD PROMPT (USE IF AI STARTS GOING OFF-SCOPE)
+====================================================================
+You are drifting from scope. Refocus immediately.
+- Implement ONLY Job Offer module changes INSIDE the jobOffer package family.
+- NEVER create files outside jobOffer package. All files go in: src/.../jobOffer/entity, src/.../jobOffer/service, etc.
+- Reuse existing dashboards/navigation; do not create duplicate dashboards.
+- Do not rebuild authentication.
+- Keep Maven + JavaFX + MVC style.
+- Use same database strategy and keep compatibility.
+Return only:
+1) implemented changes
+2) modified files (list the jobOffer package paths only)
+3) tests (in jobOffer package only)
+4) next small task
+
+====================================================================
+TEAM SAFETY CHECKLIST (RUN BEFORE MERGE)
+====================================================================
+- ALL files are inside jobOffer package only
+- No files created outside jobOffer folder
+- No duplicate dashboard added
+- Auth module untouched
+- Existing navigation still works
+- No unrelated package refactor
+- DB migration reviewed with team
+- Role-based access tested (student/partner/admin)
+- Main workflows tested end-to-end
+- Gemini API key not hardcoded
+
+====================================================================
+TEST PROMPT SUITE (ADD AFTER IMPLEMENTATION PROMPTS)
+====================================================================
+
+HOW TO USE TEST PROMPTS
+1) Run Prompt T00 once per testing session.
+2) Run T01..T13 one by one.
+3) Keep generated tests in module-specific folders (unit/integration/ui/e2e).
+4) After each prompt, run Maven test command and fix failures before continuing.
+
+====================================================================
+PROMPT T00 -- GLOBAL TEST CONTEXT (RUN IN EVERY TEST SESSION)
+====================================================================
+You are generating tests ONLY for the Job Offer module integrated in an existing Java MVC + JavaFX app.
+Constraints:
+- Build tool: Maven
+- PACKAGE RULE: All test files MUST go inside src/test/java/com/app/jobOffer/ (matching implementation packages)
+  Examples: com.app.jobOffer.entity.JobOfferTest, com.app.jobOffer.service.JobOfferServiceTest
+  DO NOT create test files outside jobOffer package.
+- Auth module already exists; do not create auth tests beyond role/permission behavior used by Job Offer.
+- Reuse existing dashboards/navigation behavior; do not test or create duplicate dashboards.
+- Same database strategy as existing app; avoid destructive schema assumptions.
+Mandatory business rules to validate in the current phase:
+1) JobOfferType: INTERNSHIP, APPRENTICESHIP, JOB
+2) JobOfferStatus: PENDING, ACTIVE, REJECTED, CLOSED
+3) JobApplicationStatus: SUBMITTED, REVIEWED, ACCEPTED, REJECTED
+4) One student cannot apply twice to same offer
+5) Student can apply only to ACTIVE offers
+6) Partner can manage only own offers
+7) Admin moderation actions work by status
+8) Reopen closed offer sets status to PENDING
+9) ATS/AI logic is deferred and not tested in this phase
+Output format:
+A) Tests added/updated (in jobOffer.* packages only)
+B) Files touched (all under src/test/java/com/app/jobOffer/)
+C) How to run
+D) Expected pass criteria
+E) Any flaky risk
+
+====================================================================
+PROMPT T01 -- UNIT TESTS FOR DOMAIN MODELS + ENUMS
+====================================================================
+Generate unit tests for Job Offer domain models and enums.
+Coverage goals:
+1) Enum values and serialization/parsing
+2) Model invariants and helper methods:
+   - hasDecision()
+   - needsStatusNotification()
+3) Default values and timestamp behavior if modeled
+4) Validation constraints for required fields and lengths
+5) Equality/hash behavior if implemented
+Deliver:
+- Test class list
+- Test method matrix mapping each field/rule
+
+====================================================================
+PROMPT T02 -- UNIT TESTS FOR JOBOFFERSERVICE
+====================================================================
+Generate comprehensive unit tests for JobOfferService.
+Must cover:
+1) createForPartner sets owner and PENDING
+2) update persists changes without side effects
+3) changeStatus transitions including ACTIVE publishedAt logic
+4) delete behavior
+5) getPartnerOffersPaginated contract
+6) unauthorized ownership manipulation blocked
+Use mocks for repository and clock/time dependencies where needed.
+Deliver:
+- Happy-path tests
+- Edge-case tests
+- Exception-path tests
+
+====================================================================
+PROMPT T03 -- UNIT TESTS FOR JOBAPPLICATIONSERVICE
+====================================================================
+Generate unit tests for JobApplicationService.
+Must cover:
+1) apply success path
+2) apply fails if offer not ACTIVE
+3) apply fails for duplicate student application
+4) updateStatus with custom message
+5) updateStatus default message generation path
+6) markStatusAsNotified flag/timestamp updates
+7) list queries by student and by offer
+Deliver:
+- Rule-to-test traceability table
+
+====================================================================
+PROMPT T04 -- LATER PHASE ONLY: UNIT TESTS FOR ATS SCORING SERVICE
+====================================================================
+Do NOT run this prompt in the current phase.
+Generate deterministic unit tests for ATS scoring only when ATS is enabled later.
+Must validate weighted formula exactly:
+- required skills: 40
+- preferred skills: 15
+- education: 20
+- experience: 15
+- languages: 10
+Test scenarios:
+1) perfect match = 100
+2) no data = minimum expected score behavior
+3) partial matching in each category
+4) missing requirements behavior
+5) score persistence fields updated
+Deliver:
+- Numeric assertion cases with expected score values
+- Breakdown structure assertions
+
+====================================================================
+PROMPT T05 -- LATER PHASE ONLY: UNIT TESTS FOR GEMINI AI SERVICES
+====================================================================
+Do NOT run this prompt in the current phase.
+Generate unit tests for AI services using mocked Gemini client only when AI is enabled later.
+Coverage goals:
+1) motivation letter prompt composition includes required context
+2) decision message prompt composition for ACCEPTED and REJECTED
+3) improvement advice prompt composition after decision
+4) retry/fallback model behavior
+5) safe error handling and user-safe messages
+6) no API key leakage in logs or exceptions
+Deliver:
+- Mock strategy
+- Assertions for prompt content and fallback order
+
+====================================================================
+PROMPT T06 -- REPOSITORY INTEGRATION TESTS (DATABASE)
+====================================================================
+Generate integration tests for Job Offer repositories against test database profile.
+Must cover:
+1) searchPaginated filters: q/type/location/status/page/limit
+2) admin search filters: status/type/partner/location
+3) partner offers pagination
+4) hasStudentApplied and getAppliedOfferIds
+5) custom skill CRUD/search by partner
+6) unique constraint on (offer_id, student_id)
+Requirements:
+- seed minimal deterministic fixtures
+- isolate each test transaction
+- clean rollback strategy
+Deliver:
+- Test dataset plan
+- Query expectation assertions
+
+====================================================================
+PROMPT T07 -- LATER PHASE ONLY: SERVICE + REPOSITORY INTEGRATION TESTS
+====================================================================
+Do NOT run this prompt in the current phase.
+Generate integration tests that validate service rules with real persistence only when advanced scoring/AI-dependent behavior is added later.
+Scenarios:
+1) create -> approve -> close -> reopen lifecycle
+2) apply workflow with duplicate protection
+3) status updates and notifications persisted
+4) Later-phase advanced scoring and breakdown tests are excluded now
+Deliver:
+- End-to-end service-level data assertions
+
+====================================================================
+PROMPT T08 -- CONTROLLER TESTS (ROLE + OWNERSHIP)
+====================================================================
+Generate controller tests for role and ownership boundaries.
+Must validate:
+1) student-only application endpoints/actions
+2) partner-only offer management endpoints/actions
+3) partner cannot manage another partner's offers
+4) admin moderation access and action matrix
+5) unauthorized and forbidden responses/messages
+Deliver:
+- Role-action test matrix
+
+====================================================================
+PROMPT T09 -- LATER PHASE ONLY: JAVAFX UI CONTROLLER TESTS
+====================================================================
+Generate JavaFX controller tests for Job Offer screens integrated with existing UI shell.
+Coverage goals:
+1) list filtering/pagination bindings
+2) action button enable/disable by status and role
+3) form validation feedback
+4) loading and error states for later-phase AI/ATS actions are excluded now
+5) no duplicate dashboard instantiation
+Deliver:
+- Controller test classes
+- Mocked service wiring strategy
+
+====================================================================
+PROMPT T10 -- JAVAFX UI ROBOT/INTEGRATION TESTS
+====================================================================
+Generate UI integration tests (TestFX or existing framework in project) for key user flows:
+1) student browse -> details -> apply
+2) partner list -> edit/close/reopen/delete
+3) partner application review -> score -> status update
+4) admin list -> detail -> approve/reject/unreject
+Requirements:
+- target existing navigation flow only
+- stable selectors and wait strategy
+Deliver:
+- UI test plan + anti-flake tactics
+
+====================================================================
+PROMPT T11 -- LATER PHASE ONLY: END-TO-END WORKFLOW TESTS
+====================================================================
+Generate E2E tests for complete Job Offer lifecycle:
+1) partner creates offer (PENDING)
+2) admin approves (ACTIVE)
+3) student applies
+4) later-phase scoring/AI decision steps are excluded now
+6) partner closes and reopens to PENDING
+Deliver:
+- Scenario steps
+- Assertions per step
+- Failure diagnostics strategy
+
+====================================================================
+PROMPT T12 -- LATER PHASE ONLY: REGRESSION TEST SUITE + BUG LOCK TESTS
+====================================================================
+Create regression tests from known fragile points:
+1) duplicate apply attempts
+2) status transition edge cases
+3) missing CV / invalid CV parser output (later phase)
+4) Gemini failures/timeouts/rate limits (later phase)
+5) pagination off-by-one issues
+6) ownership bypass attempts
+Deliver:
+- Regression suite organization
+- Naming convention for bug lock tests
+
+====================================================================
+PROMPT T13 -- CI TEST PIPELINE PROMPT (MAVEN)
+====================================================================
+Generate CI-ready Maven test plan for Job Offer module.
+Requirements:
+1) split unit/integration/ui/e2e stages
+2) fail-fast on unit stage
+3) deterministic test profile config
+4) coverage report for service/repository/controller packages
+5) artifact upload for test reports and screenshots (UI tests)
+Deliver:
+- Suggested Maven commands for each stage
+- CI stage order
+- Flaky quarantine policy
+
+====================================================================
+PROMPT T14 -- LATER PHASE ONLY: TEST DATA FACTORY + FIXTURE PROMPT
+====================================================================
+Generate reusable test data builders/factories for Job Offer tests.
+Need factories for:
+1) JobOffer by status/type
+2) JobApplication by status/score
+3) users by role (student/partner/admin)
+4) ATS extracted data payloads (later phase)
+5) custom skills by partner
+Deliver:
+- factory class design
+- examples of deterministic fixture combinations
+
+====================================================================
+PROMPT T15 -- CURRENT-PHASE QUALITY GATE (CORE ONLY)
+====================================================================
+Run a final quality gate review for Job Offer tests.
+Checklist:
+1) all critical business rules have at least one automated test
+2) permission matrix fully covered
+3) ATS/AI tests are not expected in this phase
+4) repository queries tested with real DB profile
+5) UI actions covered for each role
+6) E2E happy path covered
+Deliver:
+- Coverage gap report
+- missing tests list
+- prioritized next additions
+
+====================================================================
+TEST ANTI-CONFUSION GUARD (USE WHEN AI TEST OUTPUT DRIFTS)
+====================================================================
+Refocus on testing ONLY Job Offer scope.
+- Do not generate implementation features unless required for testability.
+- Do not add new dashboard structures.
+- Do not touch authentication module.
+- Keep Maven-compatible test output.
+Return only:
+1) tests added
+2) files changed
+3) run commands
+4) remaining uncovered rules

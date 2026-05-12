@@ -20,8 +20,10 @@ use App\Repository\ProgramRepository;
 use App\Repository\ProgramModuleRepository;
 use App\Repository\ModuleCourseRepository;
 use App\Repository\CourseContenuRepository;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\HttpFoundation\JsonResponse;
@@ -345,13 +347,14 @@ class ProgrammeController extends AbstractController
     }
 
     #[Route('/programme/contenus/new', name: 'app_programme_contenus_new')]
-    public function newContenu(Request $request, EntityManagerInterface $em): Response
+    public function newContenu(Request $request, EntityManagerInterface $em, SupabaseStorageService $supabaseStorageService): Response
     {
         $contenu = new Contenu();
         $form = $this->createForm(ContenuFormType::class, $contenu);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->storeContentFile($contenu, $supabaseStorageService);
             $em->persist($contenu);
             $em->flush();
 
@@ -365,12 +368,13 @@ class ProgrammeController extends AbstractController
     }
 
     #[Route('/programme/contenus/{id}/edit', name: 'app_programme_contenus_edit')]
-    public function editContenu(Contenu $contenu, Request $request, EntityManagerInterface $em): Response
+    public function editContenu(Contenu $contenu, Request $request, EntityManagerInterface $em, SupabaseStorageService $supabaseStorageService): Response
     {
         $form = $this->createForm(ContenuFormType::class, $contenu);
         $form->handleRequest($request);
 
         if ($form->isSubmitted() && $form->isValid()) {
+            $this->storeContentFile($contenu, $supabaseStorageService);
             $contenu->setUpdatedAt(new \DateTime());
             $em->flush();
 
@@ -392,6 +396,20 @@ class ProgrammeController extends AbstractController
 
         $this->addFlash('success', 'Content deleted successfully!');
         return $this->redirectToRoute('app_programme_contenus');
+    }
+
+    private function storeContentFile(Contenu $contenu, SupabaseStorageService $supabaseStorageService): void
+    {
+        $file = $contenu->getContentFile();
+        if (!$file instanceof UploadedFile) {
+            return;
+        }
+
+        $meta = $supabaseStorageService->uploadLmsContent($file);
+        // Persist DB contract: supabase:<object_path>
+        $contenu->setFileName('supabase:' . $meta['objectPath']);
+        $contenu->setFileSize($meta['fileSize']);
+        $contenu->setContentFile(null);
     }
 
     // ============ MODULE-COURSE RELATIONSHIPS ============

@@ -27,7 +27,7 @@
                 <div class="col-md-6 col-lg-4">
                     <div class="card card-elevated h-100 hover-lift" style="transition: transform 0.2s;">
                         {% if classe.imageFilename %}
-                            <img src="{{ asset('uploads/classes/' ~ classe.imageFilename) }}" class="card-img-top" alt="{{ classe.name }}" style="height: 180px; object-fit: cover;">
+                            <img src="{{ storage_url(classe.imageFilename, 'uploads/classes') }}" class="card-img-top" alt="{{ classe.name }}" style="height: 180px; object-fit: cover;">
                         {% else %}
                             <div class="card-img-top d-flex align-items-center justify-content-center" 
                                  style="height: 180px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">

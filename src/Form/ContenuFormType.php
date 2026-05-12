@@ -43,7 +43,7 @@ class ContenuFormType extends AbstractType
                 'label' => 'Upload File',
                 'required' => false,
                 'allow_delete' => true,
-                'download_uri' => true,
+                'download_uri' => false,
                 'attr' => [
                     'class' => 'form-control'
                 ]

@@ -15,10 +15,13 @@ use App\Service\JobOffer\ATSScoringService;
 use App\Service\JobOffer\JobApplicationService;
 use App\Service\JobOffer\JobOfferService;
 use App\Service\JobOffer\MotivationLetterService;
+use App\Service\Storage\SupabaseStorageService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -34,6 +37,7 @@ class JobOfferController extends AbstractController
         private readonly JobApplicationService $applicationService,
         private readonly ATSScoringService $scoringService,
         private readonly MotivationLetterService $motivationLetterService,
+        private readonly SupabaseStorageService $supabaseStorageService,
     ) {
     }
 
@@ -138,6 +142,19 @@ class JobOfferController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             try {
+                $uploadedCv = $application->getCvFile();
+                if ($uploadedCv instanceof \Symfony\Component\HttpFoundation\File\UploadedFile) {
+                    $remotePath = $this->supabaseStorageService->uploadJobApplicationFileWithIds(
+                        $uploadedCv,
+                        $offer->getId(),
+                        $user->getId()
+                    );
+
+                    // Persist the DB contract format: supabase:<object_path>
+                    $application->setCvFileName('supabase:' . $remotePath);
+                    $application->setCvFile(null);
+                }
+
                 $this->applicationService->apply($application, $offer, $user);
                 $this->addFlash('success', 'Your application has been submitted successfully.');
             } catch (\LogicException $e) {
@@ -562,6 +579,50 @@ class JobOfferController extends AbstractController
             'breakdown' => $application->getScoreBreakdown(),
             'extractedData' => $application->getExtractedData(),
         ]);
+    }
+
+    /**
+     * Download CV reliably (local legacy files and Supabase files).
+     */
+    #[Route('/partner/job-applications/{id}/download-cv', name: 'app_partner_job_application_download_cv', methods: ['GET'])]
+    #[IsGranted('ROLE_BUSINESS_PARTNER')]
+    public function downloadApplicationCv(JobApplication $application): Response
+    {
+        $this->denyAccessUnlessGranted(JobOfferVoter::VIEW_APPLICATIONS, $application->getOffer());
+
+        $cvReference = $application->getCvFileName();
+        if ($cvReference === null || trim($cvReference) === '') {
+            return new Response('CV not found for this application.', Response::HTTP_NOT_FOUND, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
+
+        // Legacy local upload support.
+        if (!filter_var($cvReference, FILTER_VALIDATE_URL)) {
+            $localPath = $this->getParameter('kernel.project_dir') . '/public/uploads/cv/' . $cvReference;
+            if (is_file($localPath)) {
+                $response = new BinaryFileResponse($localPath);
+                $response->setContentDisposition(
+                    ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+                    basename($cvReference)
+                );
+
+                return $response;
+            }
+        }
+
+        try {
+            $file = $this->supabaseStorageService->downloadJobApplicationFile($cvReference);
+
+            return new Response($file['content'], Response::HTTP_OK, [
+                'Content-Type' => $file['mimeType'],
+                'Content-Disposition' => 'attachment; filename="' . addslashes($file['fileName']) . '"',
+            ]);
+        } catch (\Throwable $e) {
+            return new Response('Unable to download CV file.', Response::HTTP_NOT_FOUND, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
     }
 
     /**

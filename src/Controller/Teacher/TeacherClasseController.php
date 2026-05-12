@@ -16,8 +16,10 @@ use App\Entity\User;
 use App\Enum\ContenuType;
 use App\Enum\PeriodUnit;
 use App\Repository\TeacherClasseRepository;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
@@ -29,7 +31,8 @@ class TeacherClasseController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private TeacherClasseRepository $teacherClasseRepository
+        private TeacherClasseRepository $teacherClasseRepository,
+        private SupabaseStorageService $supabaseStorageService
     ) {}
 
     #[Route('', name: 'app_teacher_my_classes')]
@@ -464,8 +467,8 @@ class TeacherClasseController extends AbstractController
 
             // Handle file upload if present
             $uploadedFile = $request->files->get('content_file');
-            if ($uploadedFile) {
-                $contenu->setContentFile($uploadedFile);
+            if ($uploadedFile instanceof UploadedFile) {
+                $this->storeContentFile($contenu, $uploadedFile);
             }
 
             $this->entityManager->persist($contenu);
@@ -583,8 +586,8 @@ class TeacherClasseController extends AbstractController
 
             // Handle file upload if present
             $uploadedFile = $request->files->get('content_file');
-            if ($uploadedFile) {
-                $contenu->setContentFile($uploadedFile);
+            if ($uploadedFile instanceof UploadedFile) {
+                $this->storeContentFile($contenu, $uploadedFile);
             }
 
             $this->entityManager->flush();
@@ -651,5 +654,14 @@ class TeacherClasseController extends AbstractController
 
         $this->addFlash('success', sprintf('Content "%s" deleted successfully.', $contenuTitle));
         return $this->redirectToRoute('app_teacher_classe_show', ['id' => $id]);
+    }
+
+    private function storeContentFile(Contenu $contenu, UploadedFile $uploadedFile): void
+    {
+        $remotePath = $this->supabaseStorageService->uploadFile($uploadedFile, 'course-content');
+
+        $contenu->setFileName('supabase:' . $remotePath);
+        $contenu->setFileSize($uploadedFile->getSize());
+        $contenu->setContentFile(null);
     }
 }

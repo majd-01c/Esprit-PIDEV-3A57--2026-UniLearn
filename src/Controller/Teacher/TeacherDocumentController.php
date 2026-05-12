@@ -6,6 +6,7 @@ use App\Entity\CourseDocument;
 use App\Entity\User;
 use App\Repository\CourseDocumentRepository;
 use App\Repository\TeacherClasseRepository;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -23,7 +24,8 @@ class TeacherDocumentController extends AbstractController
         private EntityManagerInterface $entityManager,
         private CourseDocumentRepository $documentRepository,
         private TeacherClasseRepository $teacherClasseRepository,
-        private DownloadHandler $downloadHandler
+        private DownloadHandler $downloadHandler,
+        private SupabaseStorageService $supabaseStorageService
     ) {}
 
     #[Route('', name: 'app_teacher_documents')]
@@ -93,7 +95,7 @@ class TeacherDocumentController extends AbstractController
             $document->setDescription($description);
             $document->setClasse($teacherClasse->getClasse());
             $document->setUploadedBy($user);
-            $document->setDocumentFile($uploadedFile);
+            $this->storeDocumentFile($document, $uploadedFile);
 
             $this->entityManager->persist($document);
             $this->entityManager->flush();
@@ -153,7 +155,7 @@ class TeacherDocumentController extends AbstractController
             /** @var UploadedFile|null $uploadedFile */
             $uploadedFile = $request->files->get('document_file');
             if ($uploadedFile) {
-                $document->setDocumentFile($uploadedFile);
+                $this->storeDocumentFile($document, $uploadedFile);
             }
 
             $this->entityManager->flush();
@@ -206,12 +208,31 @@ class TeacherDocumentController extends AbstractController
             return $this->redirectToRoute('app_teacher_documents');
         }
 
-        return $this->downloadHandler->downloadObject(
-            $document,
-            'documentFile',
-            null,
-            $document->getOriginalFileName(),
-            false
-        );
+        $fileName = $document->getFileName();
+        if ($fileName && (str_starts_with($fileName, 'supabase:') || filter_var($fileName, FILTER_VALIDATE_URL))) {
+            try {
+                $file = $this->supabaseStorageService->downloadStoredFile($fileName);
+
+                return new Response($file['content'], Response::HTTP_OK, [
+                    'Content-Type' => $file['mimeType'],
+                    'Content-Disposition' => 'attachment; filename="' . addslashes($document->getOriginalFileName() ?: $file['fileName']) . '"',
+                ]);
+            } catch (\Throwable) {
+                $this->addFlash('error', 'Document file not found.');
+                return $this->redirectToRoute('app_teacher_documents');
+            }
+        }
+
+        return $this->downloadHandler->downloadObject($document, 'documentFile', null, $document->getOriginalFileName(), false);
+    }
+
+    private function storeDocumentFile(CourseDocument $document, UploadedFile $uploadedFile): void
+    {
+        $remotePath = $this->supabaseStorageService->uploadFile($uploadedFile, 'teacher-documents');
+
+        $document->setFileName('supabase:' . $remotePath);
+        $document->setOriginalFileName($uploadedFile->getClientOriginalName());
+        $document->setFileSize($uploadedFile->getSize());
+        $document->setDocumentFile(null);
     }
 }

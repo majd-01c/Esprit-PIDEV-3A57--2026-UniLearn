@@ -81,7 +81,7 @@
                     {% if documentRequest.documentPath %}
                     <div class="alert alert-success">
                         <i class="bi bi-file-check"></i> Document added: 
-                        <a href="{{ asset('uploads/student_documents/' ~ documentRequest.documentPath) }}" target="_blank" class="btn btn-sm btn-success">
+                        <a href="{{ storage_url(documentRequest.documentPath, 'uploads/student_documents') }}" target="_blank" class="btn btn-sm btn-success">
                             <i class="bi bi-download"></i> Download
                         </a>
                     </div>

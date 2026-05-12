@@ -17,7 +17,7 @@
         <div class="row g-0">
             <div class="col-md-4">
                 {% if classe.imageFilename %}
-                    <img src="{{ asset('uploads/classes/' ~ classe.imageFilename) }}" class="img-fluid rounded-start h-100" style="object-fit: cover;" alt="{{ classe.name }}">
+                    <img src="{{ storage_url(classe.imageFilename, 'uploads/classes') }}" class="img-fluid rounded-start h-100" style="object-fit: cover;" alt="{{ classe.name }}">
                 {% else %}
                     <div class="d-flex align-items-center justify-content-center h-100 rounded-start" 
                          style="min-height: 200px; background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);">

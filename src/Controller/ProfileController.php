@@ -6,8 +6,10 @@ use App\Entity\Profile;
 use App\Form\ChangePasswordType;
 use App\Form\ProfileType;
 use App\Service\AvatarGeneratorClient;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
@@ -21,7 +23,8 @@ class ProfileController extends AbstractController
 {
     public function __construct(
         private EntityManagerInterface $entityManager,
-        private UserPasswordHasherInterface $passwordHasher
+        private UserPasswordHasherInterface $passwordHasher,
+        private SupabaseStorageService $supabaseStorageService
     ) {
     }
 
@@ -51,6 +54,16 @@ class ProfileController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             try {
+                $photoFile = $profile->getPhotoFile();
+                if ($photoFile instanceof UploadedFile) {
+                    $remotePath = $this->supabaseStorageService->uploadFile(
+                        $photoFile,
+                        'profiles/photos/' . $user->getId()
+                    );
+                    $profile->setPhoto($this->supabaseStorageService->getPublicObjectUrl($remotePath));
+                    $profile->setPhotoFile(null);
+                }
+
                 $user->setUpdatedAt(new \DateTimeImmutable());
                 $this->entityManager->flush();
 
@@ -137,34 +150,50 @@ class ProfileController extends AbstractController
             return $this->redirectToRoute('profile_edit');
         }
 
-        // Resolve the absolute path of the uploaded photo via VichUploader storage
-        $photoPath = $storage->resolvePath($profile, 'photoFile');
+        $tempPhotoPath = null;
+        $photoPath = null;
+
+        if (filter_var($profile->getPhoto(), FILTER_VALIDATE_URL)) {
+            try {
+                $photo = $this->supabaseStorageService->downloadStoredFile($profile->getPhoto());
+                $tempPhotoPath = tempnam(sys_get_temp_dir(), 'profile-photo-');
+                file_put_contents($tempPhotoPath, $photo['content']);
+                $photoPath = $tempPhotoPath;
+            } catch (\Throwable) {
+                $photoPath = null;
+            }
+        } else {
+            // Resolve the absolute path of legacy uploaded photos via VichUploader storage.
+            $photoPath = $storage->resolvePath($profile, 'photoFile');
+        }
 
         if (!$photoPath || !file_exists($photoPath)) {
             $this->addFlash('error', 'Profile photo file not found. Please re-upload your photo.');
+            if ($tempPhotoPath && file_exists($tempPhotoPath)) {
+                unlink($tempPhotoPath);
+            }
             return $this->redirectToRoute('profile_edit');
         }
 
         // Call the Python avatar microservice
         $avatarPngBytes = $avatarClient->generateAvatar($photoPath);
+        if ($tempPhotoPath && file_exists($tempPhotoPath)) {
+            unlink($tempPhotoPath);
+        }
 
         if ($avatarPngBytes === null) {
             $this->addFlash('error', 'Avatar generation failed. The avatar service may be unavailable. Please try again later.');
             return $this->redirectToRoute('profile_edit');
         }
 
-        // Save avatar to public/uploads/avatars/{userId}/avatar.png
-        $avatarDir = $this->getParameter('kernel.project_dir') . '/public/uploads/avatars/' . $user->getId();
-        if (!is_dir($avatarDir)) {
-            mkdir($avatarDir, 0775, true);
-        }
+        $remotePath = $this->supabaseStorageService->uploadBytes(
+            $avatarPngBytes,
+            'profiles/avatars/' . $user->getId(),
+            'avatar.png',
+            'image/png'
+        );
 
-        $avatarPath = $avatarDir . '/avatar.png';
-        file_put_contents($avatarPath, $avatarPngBytes);
-
-        // Update profile entity
-        $avatarRelativeUrl = '/uploads/avatars/' . $user->getId() . '/avatar.png';
-        $profile->setAvatarFilename($avatarRelativeUrl);
+        $profile->setAvatarFilename($this->supabaseStorageService->getPublicObjectUrl($remotePath));
         $profile->setAvatarUpdatedAt(new \DateTime());
 
         $this->entityManager->flush();

@@ -4,6 +4,7 @@ namespace App\Service\JobOffer;
 
 use App\Entity\JobApplication;
 use App\Entity\JobOffer;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
 use Symfony\Contracts\HttpClient\HttpClientInterface;
@@ -41,6 +42,7 @@ class ATSScoringService
         private readonly LoggerInterface $logger,
         private readonly string $cvUploadDirectory,
         private readonly string $geminiApiKey,
+        private readonly SupabaseStorageService $supabaseStorageService,
     ) {
     }
 
@@ -170,8 +172,12 @@ class ATSScoringService
             return null;
         }
         
-        $cvPath = $this->cvUploadDirectory . '/' . $cvFileName;
-        
+        $cvPath = $this->resolveCvPath($application);
+
+        if ($cvPath === null) {
+            return null;
+        }
+
         // Extract text from PDF
         $cvText = $this->cvParser->extractTextFromPdf($cvPath);
         if (empty($cvText)) {
@@ -194,6 +200,69 @@ class ATSScoringService
         }
         
         return $extractedData;
+    }
+
+    private function resolveCvPath(JobApplication $application): ?string
+    {
+        $cvFileName = $application->getCvFileName();
+        if (empty($cvFileName)) {
+            return null;
+        }
+
+        $localPath = $this->cvUploadDirectory . '/' . $cvFileName;
+        if (is_file($localPath)) {
+            return $localPath;
+        }
+
+        // Handle supabase: prefix, full URL, or bare object path
+        if (str_starts_with($cvFileName, 'supabase:')) {
+            $objectPath = trim(substr($cvFileName, strlen('supabase:')));
+            try {
+                $file = $this->supabaseStorageService->downloadStoredFile($cvFileName);
+                $tempPath = tempnam(sys_get_temp_dir(), 'cv_') . '.pdf';
+                file_put_contents($tempPath, $file['content']);
+                return $tempPath;
+            } catch (\Throwable $e) {
+                $this->logger->warning('Supabase CV download failed', [
+                    'applicationId' => $application->getId(),
+                    'error' => $e->getMessage(),
+                ]);
+                return null;
+            }
+        }
+
+        $remoteUrl = filter_var($cvFileName, FILTER_VALIDATE_URL)
+            ? $cvFileName
+            : $this->supabaseStorageService->getPublicObjectUrl($cvFileName);
+
+        try {
+            $response = $this->httpClient->request('GET', $remoteUrl);
+            if ($response->getStatusCode() !== 200) {
+                $this->logger->warning('Remote CV download failed', [
+                    'applicationId' => $application->getId(),
+                    'status' => $response->getStatusCode(),
+                ]);
+
+                return null;
+            }
+
+            $tempPath = tempnam(sys_get_temp_dir(), 'cv_');
+            if ($tempPath === false) {
+                return null;
+            }
+
+            $targetPath = $tempPath . '.pdf';
+            file_put_contents($targetPath, $response->getContent());
+
+            return $targetPath;
+        } catch (\Throwable $e) {
+            $this->logger->warning('Remote CV access failed', [
+                'applicationId' => $application->getId(),
+                'error' => $e->getMessage(),
+            ]);
+
+            return null;
+        }
     }
 
     /**
