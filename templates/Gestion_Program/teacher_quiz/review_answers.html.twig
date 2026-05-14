@@ -232,7 +232,7 @@
             <div class="d-flex align-items-center justify-content-between">
                 <div class="d-flex align-items-center">
                     {% if userAnswer.user.profile and userAnswer.user.profile.avatarFilename %}
-                        <img src="{{ vich_uploader_asset(userAnswer.user.profile, 'avatarFile') }}" 
+                        <img src="{{ storage_url(userAnswer.user.profile.avatarFilename) }}" 
                              class="rounded-circle me-3" width="60" height="60" alt="" style="border: 3px solid rgba(255,255,255,0.3);">
                     {% else %}
                         <div class="rounded-circle bg-white bg-opacity-25 d-flex align-items-center justify-content-center me-3"

@@ -4,14 +4,13 @@ namespace App\Controller\Admin;
 
 use App\Entity\DocumentRequest;
 use App\Repository\DocumentRequestRepository;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
-use Symfony\Component\HttpFoundation\File\Exception\FileException;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\String\Slugger\SluggerInterface;
 
 #[Route('/admin/document-requests')]
 #[IsGranted('ROLE_ADMIN')]
@@ -67,7 +66,7 @@ class AdminDocumentRequestController extends AbstractController
         Request $request,
         DocumentRequest $documentRequest,
         EntityManagerInterface $entityManager,
-        SluggerInterface $slugger
+        SupabaseStorageService $supabaseStorageService
     ): Response {
         $uploadedFile = $request->files->get('document_file');
 
@@ -90,26 +89,22 @@ class AdminDocumentRequestController extends AbstractController
             return $this->redirectToRoute('app_admin_document_request_show', ['id' => $documentRequest->getId()]);
         }
 
-        // Generate unique filename
-        $originalFilename = pathinfo($uploadedFile->getClientOriginalName(), PATHINFO_FILENAME);
-        $safeFilename = $slugger->slug($originalFilename);
-        $newFilename = $safeFilename . '-' . uniqid() . '.' . $uploadedFile->guessExtension();
-
-        // Create upload directory if it doesn't exist
-        $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/student_documents';
-        if (!is_dir($uploadDir)) {
-            mkdir($uploadDir, 0777, true);
-        }
-
         try {
-            $uploadedFile->move($uploadDir, $newFilename);
-        } catch (FileException $e) {
+            $original = $uploadedFile->getClientOriginalName() ?: 'file';
+            $sanitized = preg_replace('/[^a-zA-Z0-9._-]/', '_', $original) ?: '_';
+            $uuidFolder = bin2hex(random_bytes(16));
+            $uuidFile = bin2hex(random_bytes(16));
+
+            $objectPath = sprintf('evaluation-documents/document-request/%s/%s_%s', $uuidFolder, $uuidFile, $sanitized);
+
+            $remotePath = $supabaseStorageService->uploadToObjectPath($uploadedFile, $objectPath);
+            // Persist DB contract: supabase:<object_path>
+            $documentRequest->setDocumentPath('supabase:' . $remotePath);
+        } catch (\RuntimeException $e) {
             $this->addFlash('error', 'Error uploading file.');
             return $this->redirectToRoute('app_admin_document_request_show', ['id' => $documentRequest->getId()]);
         }
 
-        // Update document request with file path
-        $documentRequest->setDocumentPath($newFilename);
         $documentRequest->setStatus('ready');
         $entityManager->flush();
 
@@ -123,14 +118,6 @@ class AdminDocumentRequestController extends AbstractController
         DocumentRequest $documentRequest,
         EntityManagerInterface $entityManager
     ): Response {
-        // Delete file if exists
-        if ($documentRequest->getDocumentPath()) {
-            $filePath = $this->getParameter('kernel.project_dir') . '/public/uploads/student_documents/' . $documentRequest->getDocumentPath();
-            if (file_exists($filePath)) {
-                unlink($filePath);
-            }
-        }
-
         $entityManager->remove($documentRequest);
         $entityManager->flush();
 

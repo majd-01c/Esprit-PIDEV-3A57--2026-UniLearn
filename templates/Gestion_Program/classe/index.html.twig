@@ -38,7 +38,7 @@
                             <div class="col-md-6 col-lg-4">
                                 <div class="card h-100 border-0 shadow-sm">
                                     {% if classe.imageFilename %}
-                                        <img src="{{ asset('uploads/classes/' ~ classe.imageFilename) }}" class="card-img-top" alt="{{ classe.name }}" style="height: 150px; object-fit: cover;">
+                                        <img src="{{ storage_url(classe.imageFilename, 'uploads/classes') }}" class="card-img-top" alt="{{ classe.name }}" style="height: 150px; object-fit: cover;">
                                     {% else %}
                                         <div class="card-img-top bg-gradient d-flex align-items-center justify-content-center" 
                                              style="height: 150px; background: linear-gradient(135deg, #17a2b8, #138496);">

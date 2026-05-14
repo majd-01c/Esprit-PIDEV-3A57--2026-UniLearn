@@ -14,14 +14,14 @@ use App\Form\ClasseType;
 use App\Repository\ClasseRepository;
 use App\Repository\StudentClasseRepository;
 use App\Repository\TeacherClasseRepository;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\File\Exception\FileException;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-use Symfony\Component\String\Slugger\SluggerInterface;
 
 #[Route('/classe')]
 #[IsGranted('ROLE_ADMIN')]
@@ -32,7 +32,7 @@ class ClasseController extends AbstractController
         private ClasseRepository $classeRepository,
         private StudentClasseRepository $studentClasseRepository,
         private TeacherClasseRepository $teacherClasseRepository,
-        private SluggerInterface $slugger
+        private SupabaseStorageService $supabaseStorageService
     ) {}
 
     #[Route('', name: 'app_classe')]
@@ -62,18 +62,11 @@ class ClasseController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $imageFile = $form->get('imageFile')->getData();
-            if ($imageFile) {
-                $originalFilename = pathinfo($imageFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $safeFilename = $this->slugger->slug($originalFilename);
-                $newFilename = $safeFilename.'-'.uniqid().'.'.$imageFile->guessExtension();
-
+            if ($imageFile instanceof UploadedFile) {
                 try {
-                    $imageFile->move(
-                        $this->getParameter('classes_upload_directory'),
-                        $newFilename
-                    );
-                    $classe->setImageFilename($newFilename);
-                } catch (FileException $e) {
+                    $remotePath = $this->supabaseStorageService->uploadFile($imageFile, 'classes/images');
+                    $classe->setImageFilename($this->supabaseStorageService->getPublicObjectUrl($remotePath));
+                } catch (\RuntimeException $e) {
                     $this->addFlash('error', 'Failed to upload image.');
                 }
             }
@@ -140,26 +133,11 @@ class ClasseController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             $imageFile = $form->get('imageFile')->getData();
-            if ($imageFile) {
-                $originalFilename = pathinfo($imageFile->getClientOriginalName(), PATHINFO_FILENAME);
-                $safeFilename = $this->slugger->slug($originalFilename);
-                $newFilename = $safeFilename.'-'.uniqid().'.'.$imageFile->guessExtension();
-
+            if ($imageFile instanceof UploadedFile) {
                 try {
-                    $imageFile->move(
-                        $this->getParameter('classes_upload_directory'),
-                        $newFilename
-                    );
-                    // Delete old image if exists
-                    $oldFilename = $classe->getImageFilename();
-                    if ($oldFilename) {
-                        $oldFilePath = $this->getParameter('classes_upload_directory').'/'.$oldFilename;
-                        if (file_exists($oldFilePath)) {
-                            unlink($oldFilePath);
-                        }
-                    }
-                    $classe->setImageFilename($newFilename);
-                } catch (FileException $e) {
+                    $remotePath = $this->supabaseStorageService->uploadFile($imageFile, 'classes/images');
+                    $classe->setImageFilename($this->supabaseStorageService->getPublicObjectUrl($remotePath));
+                } catch (\RuntimeException $e) {
                     $this->addFlash('error', 'Failed to upload image.');
                 }
             }

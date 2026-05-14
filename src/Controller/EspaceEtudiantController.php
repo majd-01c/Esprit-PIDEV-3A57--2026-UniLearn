@@ -12,10 +12,13 @@ use App\Repository\DocumentRequestRepository;
 use App\Repository\ScheduleRepository;
 use App\Repository\StudentClasseRepository;
 use App\Service\AIRecommendationService;
+use App\Service\Storage\SupabaseStorageService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Annotation\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -221,7 +224,7 @@ class EspaceEtudiantController extends AbstractController
     }
 
     #[Route('/documents/{id}/download', name: 'app_espace_etudiant_document_download')]
-    public function downloadDocument(DocumentRequest $documentRequest): Response
+    public function downloadDocument(DocumentRequest $documentRequest, SupabaseStorageService $supabaseStorageService): Response
     {
         $user = $this->getUser();
         
@@ -235,13 +238,28 @@ class EspaceEtudiantController extends AbstractController
             return $this->redirectToRoute('app_espace_etudiant_documents');
         }
         
-        $filePath = $this->getParameter('kernel.project_dir') . '/public/uploads/student_documents/' . $documentRequest->getDocumentPath();
-        
-        if (!file_exists($filePath)) {
+        $documentPath = $documentRequest->getDocumentPath();
+
+        if (!filter_var($documentPath, FILTER_VALIDATE_URL)) {
+            $filePath = $this->getParameter('kernel.project_dir') . '/public/uploads/student_documents/' . $documentPath;
+            if (is_file($filePath)) {
+                $response = new BinaryFileResponse($filePath);
+                $response->setContentDisposition(ResponseHeaderBag::DISPOSITION_ATTACHMENT, basename($documentPath));
+
+                return $response;
+            }
+        }
+
+        try {
+            $file = $supabaseStorageService->downloadStoredFile($documentPath);
+
+            return new Response($file['content'], Response::HTTP_OK, [
+                'Content-Type' => $file['mimeType'],
+                'Content-Disposition' => 'attachment; filename="' . addslashes($file['fileName']) . '"',
+            ]);
+        } catch (\Throwable) {
             $this->addFlash('error', 'File not found.');
             return $this->redirectToRoute('app_espace_etudiant_documents');
         }
-        
-        return $this->file($filePath, $documentRequest->getDocumentPath());
     }
 }

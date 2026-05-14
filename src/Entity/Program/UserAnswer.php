@@ -47,7 +47,7 @@ class UserAnswer
     #[ORM\Column(options: ['default' => false])]
     private bool $isPassed = false;
 
-    #[ORM\Column(options: ['default' => false])]
+    #[ORM\Column(name: 'cheat_flag', options: ['default' => false])]
     private bool $isCheated = false;
 
     #[ORM\Column(options: ['default' => 0])]

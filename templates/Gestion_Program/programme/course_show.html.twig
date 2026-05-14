@@ -95,7 +95,7 @@
                                     <small class="text-muted">
                                         <span class="badge bg-primary">{{ courseContenu.contenu.type.value }}</span>
                                         {% if courseContenu.contenu.fileType %}
-                                            <span class="badge bg-secondary">{{ courseContenu.contenu.fileType.value }}</span>
+                                            <span class="badge bg-secondary">{{ courseContenu.contenu.fileType }}</span>
                                         {% endif %}
                                         {% if courseContenu.contenu.published %}
                                             <span class="badge bg-success">Published</span>
@@ -103,7 +103,7 @@
                                             <span class="badge bg-warning">Draft</span>
                                         {% endif %}
                                         {% if courseContenu.contenu.fileName %}
-                                            | <a href="{{ vich_uploader_asset(courseContenu.contenu, 'contentFile') }}" target="_blank" class="text-decoration-none">
+                                            | <a href="{{ storage_url(courseContenu.contenu.fileName, 'uploads/content') }}" target="_blank" class="text-decoration-none">
                                                 <i class="bi bi-download"></i> Download
                                             </a>
                                         {% endif %}

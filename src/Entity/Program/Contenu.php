@@ -4,7 +4,6 @@ namespace App\Entity;
 
 use App\Repository\ContenuRepository;
 use App\Enum\ContenuType;
-use App\Enum\FileType;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\DBAL\Types\Types;
@@ -62,8 +61,8 @@ class Contenu
     #[ORM\Column(nullable: true)]
     private ?int $fileSize = null;
 
-    #[ORM\Column(type: 'string', enumType: FileType::class, nullable: true)]
-    private ?FileType $fileType = null;
+    #[ORM\Column(length: 50, nullable: true)]
+    private ?string $fileType = null;
 
     #[ORM\Column(type: 'string', enumType: ContenuType::class)]
     #[Assert\NotNull(message: 'Content type is required')]
@@ -146,12 +145,12 @@ class Contenu
         return $this;
     }
 
-    public function getFileType(): ?FileType
+    public function getFileType(): ?string
     {
         return $this->fileType;
     }
 
-    public function setFileType(?FileType $fileType): static
+    public function setFileType(?string $fileType): static
     {
         $this->fileType = $fileType;
         return $this;

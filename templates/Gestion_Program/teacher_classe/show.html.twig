@@ -36,7 +36,7 @@
         <div class="col-lg-4">
             <div class="card card-elevated mb-4">
                 {% if classe.imageFilename %}
-                    <img src="{{ asset('uploads/classes/' ~ classe.imageFilename) }}" class="card-img-top" alt="{{ classe.name }}" style="height: 200px; object-fit: cover;">
+                    <img src="{{ storage_url(classe.imageFilename, 'uploads/classes') }}" class="card-img-top" alt="{{ classe.name }}" style="height: 200px; object-fit: cover;">
                 {% else %}
                     <div class="card-img-top bg-gradient d-flex align-items-center justify-content-center" 
                          style="height: 200px; background: linear-gradient(135deg, #17a2b8, #138496);">
@@ -249,10 +249,10 @@
                                                                             <button type="button" class="btn btn-outline-secondary" 
                                                                                     data-bs-toggle="modal" 
                                                                                     data-bs-target="#previewModal"
-                                                                                    data-file-url="{{ asset('uploads/content/' ~ classeContenu.contenu.fileName) }}"
+                                                                                    data-file-url="{{ storage_url(classeContenu.contenu.fileName, 'uploads/content') }}"
                                                                                     data-file-name="{{ classeContenu.contenu.fileName }}"
                                                                                     data-file-title="{{ classeContenu.contenu.title }}"
-                                                                                    data-file-type="{{ classeContenu.contenu.fileType ? classeContenu.contenu.fileType.value : '' }}"
+                                                                                    data-file-type="{{ classeContenu.contenu.fileType }}"
                                                                                     title="Preview">
                                                                                 <i class="bi bi-eye"></i>
                                                                             </button>

@@ -40,7 +40,7 @@
                         <div class="col-md-6 text-center">
                             <h6 class="text-muted mb-2">Profile Photo</h6>
                             {% if profile.photo %}
-                                <img src="{{ vich_uploader_asset(profile, 'photoFile') }}" 
+                                <img src="{{ storage_url(profile.photo, 'uploads/profiles') }}" 
                                      alt="Profile Photo" 
                                      class="rounded-circle shadow-sm" 
                                      style="width: 150px; height: 150px; object-fit: cover;">
@@ -57,7 +57,7 @@
                         <div class="col-md-6 text-center">
                             <h6 class="text-muted mb-2">Generated Avatar</h6>
                             {% if profile.avatarFilename %}
-                                <img src="{{ asset(profile.avatarFilename) }}" 
+                                <img src="{{ storage_url(profile.avatarFilename) }}" 
                                      alt="Generated Avatar" 
                                      class="rounded-circle shadow-sm" 
                                      style="width: 150px; height: 150px; object-fit: cover;"

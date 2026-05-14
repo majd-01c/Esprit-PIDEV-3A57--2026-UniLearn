@@ -70,7 +70,7 @@
                                         <td>
                                             <div class="d-flex align-items-center">
                                                 {% if sc.student.profilePic %}
-                                                    <img src="{{ asset('uploads/profiles/' ~ sc.student.profilePic) }}" 
+                                                    <img src="{{ storage_url(sc.student.profilePic, 'uploads/profiles') }}" 
                                                          alt="{{ sc.student.name }}" 
                                                          class="rounded-circle me-2" style="width: 40px; height: 40px; object-fit: cover;">
                                                 {% else %}

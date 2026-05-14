@@ -190,7 +190,7 @@ class TeacherQuizController extends AbstractController
                 return $this->render('Gestion_Program/teacher_quiz/edit.html.twig', [
                     'teacherClasse' => $teacherClasse,
                     'quiz' => $quiz,
-                    'questionTypes' => QuestionType::cases(),
+                    'questionTypes' => QuestionType::formCases(),
                 ]);
             }
 
@@ -223,7 +223,7 @@ class TeacherQuizController extends AbstractController
         return $this->render('Gestion_Program/teacher_quiz/edit.html.twig', [
             'teacherClasse' => $teacherClasse,
             'quiz' => $quiz,
-            'questionTypes' => QuestionType::cases(),
+            'questionTypes' => QuestionType::formCases(),
         ]);
     }
 
@@ -266,8 +266,10 @@ class TeacherQuizController extends AbstractController
             ]);
         }
 
+        $normalizedQuestionType = QuestionType::fromSubmitted($questionType);
+
         // Validate choices for MCQ and TRUE_FALSE
-        if (in_array($questionType, ['MCQ', 'TRUE_FALSE'])) {
+        if ($normalizedQuestionType->isChoiceBased()) {
             $validChoices = array_filter($choicesData, fn($c) => trim($c) !== '');
             if (count($validChoices) < 2) {
                 $this->addFlash('error', 'MCQ questions require at least 2 answer choices.');
@@ -289,7 +291,7 @@ class TeacherQuizController extends AbstractController
         $question = new Question();
         $question->setQuiz($quiz);
         $question->setQuestionText($questionText);
-        $question->setType(QuestionType::from($questionType));
+        $question->setType($normalizedQuestionType);
         $question->setPoints($points);
         $question->setPosition($quiz->getQuestions()->count());
         $question->setExplanation($explanation ?: null);
@@ -297,7 +299,7 @@ class TeacherQuizController extends AbstractController
         $this->entityManager->persist($question);
 
         // Add choices for MCQ or TRUE_FALSE
-        if (in_array($questionType, ['MCQ', 'TRUE_FALSE'])) {
+        if ($normalizedQuestionType->isChoiceBased()) {
             $position = 0;
             foreach ($choicesData as $index => $choiceText) {
                 $choiceText = trim($choiceText);
@@ -371,12 +373,14 @@ class TeacherQuizController extends AbstractController
                     'teacherClasse' => $teacherClasse,
                     'quiz' => $quiz,
                     'question' => $question,
-                    'questionTypes' => QuestionType::cases(),
+                    'questionTypes' => QuestionType::formCases(),
                 ]);
             }
 
+            $normalizedQuestionType = QuestionType::fromSubmitted($questionType);
+
             // Validate choices for MCQ and TRUE_FALSE
-            if (in_array($questionType, ['MCQ', 'TRUE_FALSE'])) {
+            if ($normalizedQuestionType->isChoiceBased()) {
                 $validChoices = array_filter($choicesData, fn($c) => trim($c) !== '');
                 if (count($validChoices) < 2) {
                     $this->addFlash('error', 'MCQ questions require at least 2 answer choices.');
@@ -384,7 +388,7 @@ class TeacherQuizController extends AbstractController
                         'teacherClasse' => $teacherClasse,
                         'quiz' => $quiz,
                         'question' => $question,
-                        'questionTypes' => QuestionType::cases(),
+                        'questionTypes' => QuestionType::formCases(),
                     ]);
                 }
                 if (empty($correctChoices)) {
@@ -393,13 +397,13 @@ class TeacherQuizController extends AbstractController
                         'teacherClasse' => $teacherClasse,
                         'quiz' => $quiz,
                         'question' => $question,
-                        'questionTypes' => QuestionType::cases(),
+                        'questionTypes' => QuestionType::formCases(),
                     ]);
                 }
             }
 
             $question->setQuestionText($questionText);
-            $question->setType(QuestionType::from($questionType));
+            $question->setType($normalizedQuestionType);
             $question->setPoints($points);
             $question->setExplanation($explanation ?: null);
 
@@ -409,7 +413,7 @@ class TeacherQuizController extends AbstractController
             }
 
             // Add new choices for MCQ or TRUE_FALSE
-            if (in_array($questionType, ['MCQ', 'TRUE_FALSE'])) {
+            if ($normalizedQuestionType->isChoiceBased()) {
                 $position = 0;
                 foreach ($choicesData as $index => $choiceText) {
                     $choiceText = trim($choiceText);
@@ -437,7 +441,7 @@ class TeacherQuizController extends AbstractController
             'teacherClasse' => $teacherClasse,
             'quiz' => $quiz,
             'question' => $question,
-            'questionTypes' => QuestionType::cases(),
+            'questionTypes' => QuestionType::formCases(),
         ]);
     }
 

@@ -29,7 +29,7 @@
                 <div class="card">
                     <div class="card-body text-center">
                         {% if user.profile and user.profile.photo %}
-                            <img src="{{ vich_uploader_asset(user.profile, 'photoFile') }}" 
+                            <img src="{{ storage_url(user.profile.photo, 'uploads/profiles') }}" 
                                  alt="Profile Photo" 
                                  class="rounded-circle mb-3"
                                  style="width: 150px; height: 150px; object-fit: cover;">

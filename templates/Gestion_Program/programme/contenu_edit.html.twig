@@ -124,7 +124,7 @@
                             <div class="current-file">
                                 <i class="bi bi-file-earmark-check text-primary"></i>
                                 <strong>Current file:</strong> {{ contenu.fileName }}
-                                <a href="{{ vich_uploader_asset(contenu, 'contentFile') }}" target="_blank" class="ms-2">
+                                <a href="{{ storage_url(contenu.fileName, 'uploads/content') }}" target="_blank" class="ms-2">
                                     <i class="bi bi-download"></i> Download
                                 </a>
                             </div>

@@ -10,6 +10,9 @@ parameters:
     classes_upload_directory: '%kernel.project_dir%/public/uploads/classes'
     avatar_service_url: '%env(AVATAR_SERVICE_URL)%'
     gemini_api_key: '%env(GEMINI_API_KEY)%'
+    supabase_url: '%env(SUPABASE_URL)%'
+    supabase_secret_key: '%env(SUPABASE_SECRET_KEY)%'
+    supabase_bucket: '%env(SUPABASE_BUCKET)%'
 
 services:
     # default configuration for services in *this* file
@@ -33,11 +36,6 @@ services:
         arguments:
             $mailerDsn: '%mailer_dsn%'
 
-    # # ATS Services (Groq API - free tier)
-    # App\Service\JobOffer\OpenRouterService:
-    #     arguments:
-    #         $apiKey: '%groq_api_key%'
-
     # Consolidated ATS Service (includes Gemini AI functionality)
     App\Service\JobOffer\ATSScoringService:
         arguments:
@@ -47,6 +45,16 @@ services:
     App\Service\AvatarGeneratorClient:
         arguments:
             $avatarServiceUrl: '%avatar_service_url%'
+
+    App\Service\JobOffer\MotivationLetterService:
+        arguments:
+            $geminiApiKey: '%gemini_api_key%'
+
+    App\Service\Storage\SupabaseStorageService:
+        arguments:
+            $supabaseUrl: '%supabase_url%'
+            $supabaseSecretKey: '%supabase_secret_key%'
+            $supabaseBucket: '%supabase_bucket%'
 
     App\Service\AIRecommendationService:
         arguments:

@@ -14,9 +14,14 @@ use App\Security\Voter\JobOfferVoter;
 use App\Service\JobOffer\ATSScoringService;
 use App\Service\JobOffer\JobApplicationService;
 use App\Service\JobOffer\JobOfferService;
+use App\Service\JobOffer\MotivationLetterService;
+use App\Service\Storage\SupabaseStorageService;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\BinaryFileResponse;
+use Symfony\Component\HttpFoundation\JsonResponse;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
+use Symfony\Component\HttpFoundation\ResponseHeaderBag;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 
@@ -31,6 +36,8 @@ class JobOfferController extends AbstractController
         private readonly JobOfferService $jobOfferService,
         private readonly JobApplicationService $applicationService,
         private readonly ATSScoringService $scoringService,
+        private readonly MotivationLetterService $motivationLetterService,
+        private readonly SupabaseStorageService $supabaseStorageService,
     ) {
     }
 
@@ -55,9 +62,19 @@ class JobOfferController extends AbstractController
             $typeEnum = JobOfferType::from($type);
         }
 
-        // Search only ACTIVE offers with pagination
+        // For students: exclude offers they already applied to
+        $excludeOfferIds = [];
+        $appliedCount = 0;
+        if ($this->isGranted('ROLE_STUDENT')) {
+            /** @var \App\Entity\User $user */
+            $user = $this->getUser();
+            $excludeOfferIds = $this->jobOfferRepository->getAppliedOfferIds($user);
+            $appliedCount = count($excludeOfferIds);
+        }
+
+        // Search only ACTIVE offers with pagination (excluding applied ones for students)
         $paginator = $this->jobOfferRepository->searchPaginated(
-            $q, $typeEnum, $location, JobOfferStatus::ACTIVE, $page, $limit
+            $q, $typeEnum, $location, JobOfferStatus::ACTIVE, $page, $limit, $excludeOfferIds
         );
 
         $totalItems = count($paginator);
@@ -72,6 +89,7 @@ class JobOfferController extends AbstractController
             'currentType' => $type,
             'currentLocation' => $location,
             'jobOfferTypes' => JobOfferType::cases(),
+            'appliedCount' => $appliedCount,
         ]);
     }
 
@@ -124,6 +142,19 @@ class JobOfferController extends AbstractController
 
         if ($form->isSubmitted() && $form->isValid()) {
             try {
+                $uploadedCv = $application->getCvFile();
+                if ($uploadedCv instanceof \Symfony\Component\HttpFoundation\File\UploadedFile) {
+                    $remotePath = $this->supabaseStorageService->uploadJobApplicationFileWithIds(
+                        $uploadedCv,
+                        $offer->getId(),
+                        $user->getId()
+                    );
+
+                    // Persist the DB contract format: supabase:<object_path>
+                    $application->setCvFileName('supabase:' . $remotePath);
+                    $application->setCvFile(null);
+                }
+
                 $this->applicationService->apply($application, $offer, $user);
                 $this->addFlash('success', 'Your application has been submitted successfully.');
             } catch (\LogicException $e) {
@@ -160,6 +191,59 @@ class JobOfferController extends AbstractController
         return $this->render('Gestion_Job_Offre/student/applications.html.twig', [
             'applications' => $applications,
         ]);
+    }
+
+    /**
+     * Generate AI improvement advice for a student's application (AJAX)
+     */
+    #[Route('/my-applications/{id}/ai-advice', name: 'app_student_application_ai_advice', methods: ['POST'])]
+    #[IsGranted('ROLE_STUDENT')]
+    public function generateApplicationAdvice(JobApplication $application): JsonResponse
+    {
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        // Ensure the student owns this application
+        if ($application->getStudent() !== $user) {
+            return $this->json(['success' => false, 'error' => 'Access denied.'], 403);
+        }
+
+        // Only allow advice for applications that have a decision
+        if (!$application->hasDecision()) {
+            return $this->json(['success' => false, 'error' => 'Advice is only available for reviewed applications.'], 400);
+        }
+
+        try {
+            $advice = $this->motivationLetterService->generateImprovementAdvice($application);
+            return $this->json(['success' => true, 'advice' => $advice]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
+     * Generate a motivation letter using AI based on student profile & job offer (AJAX)
+     */
+    #[Route('/job-offers/{id}/generate-motivation', name: 'app_job_offer_generate_motivation', methods: ['POST'])]
+    #[IsGranted('ROLE_STUDENT')]
+    public function generateMotivationLetter(JobOffer $offer): JsonResponse
+    {
+        /** @var \App\Entity\User $user */
+        $user = $this->getUser();
+
+        try {
+            $letter = $this->motivationLetterService->generate($user, $offer);
+
+            return $this->json([
+                'success' => true,
+                'letter' => $letter,
+            ]);
+        } catch (\Exception $e) {
+            return $this->json([
+                'success' => false,
+                'error' => $e->getMessage(),
+            ], Response::HTTP_INTERNAL_SERVER_ERROR);
+        }
     }
 
     // === PARTNER ROUTES ===
@@ -420,7 +504,8 @@ class JobOfferController extends AbstractController
 
         // Update application status
         try {
-            $this->applicationService->updateStatus($application, $newStatus);
+            $customMessage = $request->request->get('status_message');
+            $this->applicationService->updateStatus($application, $newStatus, $customMessage);
             $statusLabel = ucfirst(strtolower($newStatus->value));
             $this->addFlash('success', sprintf('Application status updated to %s successfully!', $statusLabel));
         } catch (\Exception $e) {
@@ -459,6 +544,28 @@ class JobOfferController extends AbstractController
     }
 
     /**
+     * Generate AI status message for a candidate (AJAX)
+     */
+    #[Route('/partner/job-applications/{id}/generate-message', name: 'app_partner_job_application_generate_message', methods: ['POST'])]
+    #[IsGranted('ROLE_BUSINESS_PARTNER')]
+    public function generateApplicationMessage(Request $request, JobApplication $application): JsonResponse
+    {
+        $this->denyAccessUnlessGranted(JobOfferVoter::VIEW_APPLICATIONS, $application->getOffer());
+
+        $decision = $request->request->get('decision', 'REJECTED');
+        if (!in_array($decision, ['ACCEPTED', 'REJECTED'], true)) {
+            return $this->json(['success' => false, 'error' => 'Invalid decision value.'], 400);
+        }
+
+        try {
+            $message = $this->motivationLetterService->generateStatusMessage($application, $decision);
+            return $this->json(['success' => true, 'message' => $message]);
+        } catch (\Exception $e) {
+            return $this->json(['success' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    /**
      * View score details for an application
      */
     #[Route('/partner/job-applications/{id}/score-details', name: 'app_partner_job_application_score_details', methods: ['GET'])]
@@ -472,6 +579,50 @@ class JobOfferController extends AbstractController
             'breakdown' => $application->getScoreBreakdown(),
             'extractedData' => $application->getExtractedData(),
         ]);
+    }
+
+    /**
+     * Download CV reliably (local legacy files and Supabase files).
+     */
+    #[Route('/partner/job-applications/{id}/download-cv', name: 'app_partner_job_application_download_cv', methods: ['GET'])]
+    #[IsGranted('ROLE_BUSINESS_PARTNER')]
+    public function downloadApplicationCv(JobApplication $application): Response
+    {
+        $this->denyAccessUnlessGranted(JobOfferVoter::VIEW_APPLICATIONS, $application->getOffer());
+
+        $cvReference = $application->getCvFileName();
+        if ($cvReference === null || trim($cvReference) === '') {
+            return new Response('CV not found for this application.', Response::HTTP_NOT_FOUND, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
+
+        // Legacy local upload support.
+        if (!filter_var($cvReference, FILTER_VALIDATE_URL)) {
+            $localPath = $this->getParameter('kernel.project_dir') . '/public/uploads/cv/' . $cvReference;
+            if (is_file($localPath)) {
+                $response = new BinaryFileResponse($localPath);
+                $response->setContentDisposition(
+                    ResponseHeaderBag::DISPOSITION_ATTACHMENT,
+                    basename($cvReference)
+                );
+
+                return $response;
+            }
+        }
+
+        try {
+            $file = $this->supabaseStorageService->downloadJobApplicationFile($cvReference);
+
+            return new Response($file['content'], Response::HTTP_OK, [
+                'Content-Type' => $file['mimeType'],
+                'Content-Disposition' => 'attachment; filename="' . addslashes($file['fileName']) . '"',
+            ]);
+        } catch (\Throwable $e) {
+            return new Response('Unable to download CV file.', Response::HTTP_NOT_FOUND, [
+                'Content-Type' => 'text/plain; charset=UTF-8',
+            ]);
+        }
     }
 
     /**

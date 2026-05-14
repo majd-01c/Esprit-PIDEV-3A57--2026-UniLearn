@@ -94,14 +94,14 @@
                             </td>
                             <td>
                                 {% if contenu.fileType %}
-                                    <span class="badge bg-secondary">{{ contenu.fileType.value|upper }}</span>
+                                    <span class="badge bg-secondary">{{ contenu.fileType|upper }}</span>
                                 {% else %}
                                     <span class="text-muted">-</span>
                                 {% endif %}
                             </td>
                             <td>
                                 {% if contenu.fileName %}
-                                    <a href="{{ vich_uploader_asset(contenu, 'contentFile') }}" 
+                                    <a href="{{ storage_url(contenu.fileName, 'uploads/content') }}" 
                                        target="_blank" 
                                        class="btn btn-sm btn-outline-primary"
                                        download>

@@ -54,7 +54,7 @@
                         {% if contenu.fileName %}
                             <div class="ratio ratio-16x9 mb-3">
                                 <video controls class="rounded" style="background: #000;">
-                                    <source src="{{ asset('uploads/content/' ~ contenu.fileName) }}" type="video/mp4">
+                                    <source src="{{ storage_url(contenu.fileName, 'uploads/content') }}" type="video/mp4">
                                     Your browser does not support the video tag.
                                 </video>
                             </div>
@@ -85,13 +85,13 @@
                         {% if fileExt in ['jpg', 'jpeg', 'png', 'gif', 'webp'] %}
                             {# Image #}
                             <div class="text-center">
-                                <img src="{{ asset('uploads/content/' ~ contenu.fileName) }}" 
+                                <img src="{{ storage_url(contenu.fileName, 'uploads/content') }}" 
                                      alt="{{ contenu.title }}" class="img-fluid rounded shadow-sm" style="max-height: 600px;">
                             </div>
                         {% elseif fileExt == 'pdf' %}
                             {# PDF #}
                             <div class="ratio" style="--bs-aspect-ratio: 130%;">
-                                <iframe src="{{ asset('uploads/content/' ~ contenu.fileName) }}" 
+                                <iframe src="{{ storage_url(contenu.fileName, 'uploads/content') }}" 
                                         class="rounded" style="border: 1px solid #dee2e6;"></iframe>
                             </div>
                         {% elseif fileExt in ['mp3', 'wav', 'ogg'] %}
@@ -102,7 +102,7 @@
                                 </div>
                                 <h5 class="mb-3">{{ contenu.title }}</h5>
                                 <audio controls class="w-100" style="max-width: 500px;">
-                                    <source src="{{ asset('uploads/content/' ~ contenu.fileName) }}" type="audio/mpeg">
+                                    <source src="{{ storage_url(contenu.fileName, 'uploads/content') }}" type="audio/mpeg">
                                     Your browser does not support the audio element.
                                 </audio>
                             </div>
@@ -113,7 +113,7 @@
                                     <i class="bi bi-file-earmark-arrow-down text-secondary" style="font-size: 3rem;"></i>
                                 </div>
                                 <h5 class="mb-3">{{ contenu.fileName }}</h5>
-                                <a href="{{ asset('uploads/content/' ~ contenu.fileName) }}" 
+                                <a href="{{ storage_url(contenu.fileName, 'uploads/content') }}" 
                                    class="btn btn-primary btn-lg" download>
                                     <i class="bi bi-download me-1"></i> Download File
                                 </a>
